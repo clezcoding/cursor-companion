@@ -71,6 +71,10 @@ public struct PopoverView: View {
                             .offset(y: isVisible ? 0 : 10)
                             .animation(DesignSystem.Animations.snappyEaseOut.delay(0.1), value: isVisible)
 
+                            Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1)
+                                .opacity(isVisible ? 1 : 0)
+                                .animation(DesignSystem.Animations.snappyEaseOut.delay(0.12), value: isVisible)
+
                             MetricBlockView(
                                 title: "Other Models",
                                 subtitle: "Claude 3.7 & GPT-4o",
@@ -127,39 +131,28 @@ public struct PopoverView: View {
 
                 Spacer()
 
-                HStack(spacing: 10) {
+                HStack(spacing: 12) {
                     Button(action: {
                         Task { await appState.refreshAllAccounts() }
                     }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 10, weight: .bold))
-                                .rotationEffect(Angle(degrees: appState.isRefreshing ? 360 : 0))
-                                .animation(appState.isRefreshing ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: appState.isRefreshing)
-                            Text("Sync")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .foregroundColor(DesignSystem.textSecondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(DesignSystem.bgSecondary)
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
-                        .cornerRadius(6)
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(DesignSystem.textSecondary)
+                            .rotationEffect(Angle(degrees: appState.isRefreshing ? 360 : 0))
+                            .animation(appState.isRefreshing ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: appState.isRefreshing)
                     }
-                    .buttonStyle(.springy)
+                    .buttonStyle(PlainButtonStyle())
+                    .modernHoverEffect(hoverColor: Color.white.opacity(0.1), cornerRadius: 4)
 
                     Button(action: {
                         onOpenSettings?()
                     }) {
                         Image(systemName: "gearshape.fill")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(DesignSystem.textSecondary)
-                            .frame(width: 24, height: 24)
-                            .background(DesignSystem.bgSecondary)
-                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
-                            .cornerRadius(6)
                     }
-                    .buttonStyle(.springy)
+                    .buttonStyle(PlainButtonStyle())
+                    .modernHoverEffect(hoverColor: Color.white.opacity(0.1), cornerRadius: 4)
                 }
             }
             .padding(.top, 8)
