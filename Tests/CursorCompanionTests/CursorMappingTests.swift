@@ -58,5 +58,8 @@ final class CursorMappingTests: XCTestCase {
 
         XCTAssertEqual(requests.used, 412)
         XCTAssertEqual(requests.limit, 500)
+        XCTAssertNotNil(requests.breakdown["gpt-4"])
+        XCTAssertEqual(requests.breakdown["gpt-4"]?.used, 412)
+        XCTAssertEqual(requests.breakdown["gpt-4"]?.limit, 500)
     }
 }

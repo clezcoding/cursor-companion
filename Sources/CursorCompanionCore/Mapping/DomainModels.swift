@@ -10,6 +10,7 @@ public struct UsageSnapshot: Sendable, Codable, Equatable {
     public var creditsRemaining: Double?
     public var requestsUsed: Int?
     public var requestsLimit: Int?
+    public var modelBreakdown: [String: ModelUsage]
     public var lastUpdated: Date
 
     public init(
@@ -21,6 +22,7 @@ public struct UsageSnapshot: Sendable, Codable, Equatable {
         creditsRemaining: Double? = nil,
         requestsUsed: Int? = nil,
         requestsLimit: Int? = nil,
+        modelBreakdown: [String: ModelUsage] = [:],
         lastUpdated: Date = Date()
     ) {
         self.cursorModelsPercent = cursorModelsPercent
@@ -31,7 +33,19 @@ public struct UsageSnapshot: Sendable, Codable, Equatable {
         self.creditsRemaining = creditsRemaining
         self.requestsUsed = requestsUsed
         self.requestsLimit = requestsLimit
+        self.modelBreakdown = modelBreakdown
         self.lastUpdated = lastUpdated
+    }
+}
+
+/// Modell-Nutzung für den granularen Breakdown
+public struct ModelUsage: Sendable, Codable, Equatable {
+    public let used: Int
+    public let limit: Int
+
+    public init(used: Int, limit: Int) {
+        self.used = used
+        self.limit = limit
     }
 }
 

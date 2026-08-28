@@ -101,10 +101,31 @@ public struct PopoverView: View {
                                 .animation(DesignSystem.Animations.snappyEaseOut.delay(0.2), value: isVisible)
                             }
                             
-                            HistoryChartView(accountID: account.id)
+                            SparklineWrapperView(appState: appState, accountID: account.id)
                                 .opacity(isVisible ? 1 : 0)
                                 .offset(y: isVisible ? 0 : 10)
                                 .animation(DesignSystem.Animations.snappyEaseOut.delay(0.25), value: isVisible)
+                                
+                            if let snapshot = account.snapshot, !snapshot.modelBreakdown.isEmpty {
+                                DisclosureGroup("Model Breakdown") {
+                                    VStack(spacing: 4) {
+                                        ForEach(snapshot.modelBreakdown.sorted(by: { $0.key < $1.key }), id: \.key) { key, usage in
+                                            HStack {
+                                                Text(key).font(.system(size: 11, design: .rounded))
+                                                Spacer()
+                                                Text("\(usage.used) / \(usage.limit)").font(.system(size: 11, design: .rounded)).foregroundColor(DesignSystem.textSecondary)
+                                            }
+                                        }
+                                    }
+                                    .padding(.top, 4)
+                                }
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundColor(DesignSystem.textSecondary)
+                                .accentColor(DesignSystem.textSecondary)
+                                .opacity(isVisible ? 1 : 0)
+                                .offset(y: isVisible ? 0 : 10)
+                                .animation(DesignSystem.Animations.snappyEaseOut.delay(0.3), value: isVisible)
+                            }
                         }
                         .transition(.scale(scale: 0.95).combined(with: .opacity))
                     }

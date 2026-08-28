@@ -9,6 +9,7 @@ public final class AppState: ObservableObject {
     @Published public var accounts: [CursorAccount] = []
     @Published public var selectedAccountID: String?
     @Published public var isRefreshing: Bool = false
+    @Published public var isSyncing: Bool = false
     @Published public var lastSyncDate: Date?
     @Published public var settings: UserSettings {
         didSet {
@@ -29,10 +30,12 @@ public final class AppState: ObservableObject {
 
     public let store: AccountStore
     public let client: CursorClient
+    public let historyStore: HistoryStore
 
-    public init(store: AccountStore, client: CursorClient = CursorClient()) {
+    public init(store: AccountStore, client: CursorClient = CursorClient(), historyStore: HistoryStore = HistoryStore(databaseURL: URL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(.applicationSupportDirectory, .userDomainMask, true).first ?? NSTemporaryDirectory()).appendingPathComponent("CursorCompanion").appendingPathComponent("history.sqlite"))) {
         self.store = store
         self.client = client
+        self.historyStore = historyStore
         
         if let data = UserDefaults.standard.data(forKey: Self.settingsStorageKey),
            let saved = try? JSONDecoder().decode(UserSettings.self, from: data) {
@@ -97,8 +100,10 @@ public final class AppState: ObservableObject {
     public func refreshAllAccounts() async {
         guard !isRefreshing else { return }
         isRefreshing = true
+        isSyncing = true
         defer {
             isRefreshing = false
+            isSyncing = false
             lastSyncDate = Date()
         }
 
@@ -129,6 +134,10 @@ public final class AppState: ObservableObject {
                         otherPercent: snap.otherModelsPercent ?? 0.0,
                         workspace: workspace
                     )
+                    
+                    Task {
+                        await self.historyStore.saveSnapshot(snap, for: result.id)
+                    }
                 }
             }
         }

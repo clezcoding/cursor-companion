@@ -57,9 +57,9 @@ public struct MenuBarLabelView: View {
 
     private func colorForUsage(_ used: Double?) -> Color {
         guard let used = used else { return .secondary }
-        if used >= 85.0 {
+        if used >= 95.0 {
             return DesignSystem.accentError
-        } else if used >= 70.0 {
+        } else if used >= 80.0 {
             return DesignSystem.accentWarning
         } else {
             return DesignSystem.accentSuccess
@@ -70,7 +70,8 @@ public struct MenuBarLabelView: View {
         HStack(spacing: 5) {
             // Sleek Icon
             MenuBarIconShape()
-                .opacity(0.8)
+                .opacity(appState.isSyncing ? 0.3 : 0.8)
+                .animation(appState.isSyncing ? Animation.easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default, value: appState.isSyncing)
 
             if let account = appState.activeAccount ?? appState.selectedAccount,
                let snapshot = account.snapshot {
