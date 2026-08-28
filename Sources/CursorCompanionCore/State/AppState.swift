@@ -1,0 +1,124 @@
+import Foundation
+import Combine
+
+/// Zentraler, beobachtbarer Zustand für die SwiftUI-Oberfläche
+@MainActor
+public final class AppState: ObservableObject {
+    @Published public var accounts: [CursorAccount] = []
+    @Published public var selectedAccountID: String?
+    @Published public var isRefreshing: Bool = false
+    @Published public var lastSyncDate: Date?
+    @Published public var settings: UserSettings = UserSettings()
+
+    public var selectedAccount: CursorAccount? {
+        if let id = selectedAccountID {
+            return accounts.first(where: { $0.id == id })
+        }
+        return activeAccount ?? accounts.first
+    }
+
+    public var activeAccount: CursorAccount? {
+        return accounts.first(where: { $0.isActive })
+    }
+
+    public let store: AccountStore
+    public let client: CursorClient
+
+    public init(store: AccountStore, client: CursorClient = CursorClient()) {
+        self.store = store
+        self.client = client
+    }
+
+    /// Kaltstart: Lädt sofort alle gecachten Accounts aus dem lokalen Speicher (< 1s)
+    public func loadCachedAccounts() async {
+        let loaded = await store.loadAccounts()
+        self.accounts = loaded
+        if selectedAccountID == nil {
+            self.selectedAccountID = loaded.first(where: { $0.isActive })?.id ?? loaded.first?.id
+        }
+    }
+
+    /// Wählt einen Account für die Popover-Ansicht aus
+    public func selectAccount(id: String) {
+        self.selectedAccountID = id
+    }
+
+    /// Synchronisiert die aktuell auf dem Mac aktive Cursor-Session
+    public func syncActiveCursorAccount() async {
+        guard let activeAuth = CursorAuth.detectActiveSession(),
+              let userID = CursorAuth.userID(fromAccessToken: activeAuth.accessToken) else {
+            // Kein aktiver Login gefunden
+            return
+        }
+
+        let tokens = AuthTokens(
+            accessToken: activeAuth.accessToken,
+            refreshToken: activeAuth.refreshToken
+        )
+
+        let existing = accounts.first(where: { $0.id == userID })
+        let label = existing?.label ?? (accounts.isEmpty ? "Work" : "Account \(accounts.count + 1)")
+        let account = CursorAccount(
+            id: userID,
+            label: label,
+            isActive: true,
+            plan: existing?.plan ?? activeAuth.membershipType,
+            snapshot: existing?.snapshot,
+            status: .ok,
+            lastSeen: Date()
+        )
+
+        // Markiere andere als inaktiv
+        await store.setActiveAccount(accountID: userID)
+        await store.saveOrUpdateAccount(account, tokens: tokens)
+        await loadCachedAccounts()
+    }
+
+    /// Aktualisiert alle verwalteten Accounts parallel im Hintergrund
+    public func refreshAllAccounts() async {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer {
+            isRefreshing = false
+            lastSyncDate = Date()
+        }
+
+        // Zuerst sicherstellen, dass die aktive Session aktuell eingelesen ist
+        await syncActiveCursorAccount()
+
+        let currentAccounts = await store.loadAccounts()
+        guard !currentAccounts.isEmpty else { return }
+
+        var updatedAccounts: [CursorAccount] = []
+
+        await withTaskGroup(of: CursorAccount.self) { group in
+            for acc in currentAccounts {
+                group.addTask {
+                    return await self.client.fetchAccountUsage(account: acc, store: self.store)
+                }
+            }
+
+            for await result in group {
+                updatedAccounts.append(result)
+            }
+        }
+
+        // Alphabetisch/stabil nach ID oder Label sortieren
+        self.accounts = updatedAccounts.sorted(by: { $0.isActive && !$1.isActive })
+    }
+
+    /// Ändert das benutzerdefinierte Label eines Accounts
+    public func updateAccountLabel(accountID: String, newLabel: String) async {
+        await store.updateLabel(accountID: accountID, newLabel: newLabel)
+        await loadCachedAccounts()
+    }
+
+    /// Entfernt einen Account aus der Verwaltung
+    public func removeAccount(accountID: String) async {
+        await store.removeAccount(accountID: accountID)
+        if selectedAccountID == accountID {
+            selectedAccountID = nil
+        }
+        await loadCachedAccounts()
+    }
+}
