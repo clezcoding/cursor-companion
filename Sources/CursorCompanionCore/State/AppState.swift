@@ -29,10 +29,12 @@ public final class AppState: ObservableObject {
 
     public let store: AccountStore
     public let client: CursorClient
+    public let historyStore: HistoryStore
 
-    public init(store: AccountStore, client: CursorClient = CursorClient()) {
+    public init(store: AccountStore, client: CursorClient = CursorClient(), historyStore: HistoryStore = HistoryStore(databaseURL: URL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(.applicationSupportDirectory, .userDomainMask, true).first ?? NSTemporaryDirectory()).appendingPathComponent("CursorCompanion").appendingPathComponent("history.sqlite"))) {
         self.store = store
         self.client = client
+        self.historyStore = historyStore
         
         if let data = UserDefaults.standard.data(forKey: Self.settingsStorageKey),
            let saved = try? JSONDecoder().decode(UserSettings.self, from: data) {
@@ -129,6 +131,10 @@ public final class AppState: ObservableObject {
                         otherPercent: snap.otherModelsPercent ?? 0.0,
                         workspace: workspace
                     )
+                    
+                    Task {
+                        await self.historyStore.saveSnapshot(snap, for: result.id)
+                    }
                 }
             }
         }
