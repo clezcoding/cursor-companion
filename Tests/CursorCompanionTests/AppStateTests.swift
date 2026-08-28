@@ -27,7 +27,6 @@ final class AppStateTests: XCTestCase {
         appState.selectAccount(id: "u2")
         XCTAssertEqual(appState.selectedAccount?.id, "u2")
     }
-
     @MainActor
     func test_isSyncing_state() async {
         let store = AccountStore(servicePrefix: "test.cursorcompanion.sync.\(UUID().uuidString)")
