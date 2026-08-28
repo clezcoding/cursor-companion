@@ -1,0 +1,64 @@
+{
+  "_comment": "Erwartete Domain-Modell-Ergebnisse pro Fixture. null == 'Keine Daten' im UI. Prozentwerte 0..100.",
+
+  "usage-summary-individual.json": {
+    "cursorModelsPercent": 63.0,
+    "otherModelsPercent": 41.2,
+    "totalPercent": 52.4,
+    "cycleEnd": "2026-09-15T00:00:00Z",
+    "status": "ok",
+    "notes": "Kernfall v1. Beide Pools + Total + Reset vorhanden."
+  },
+
+  "usage-summary-team.json": {
+    "cursorModelsPercent": null,
+    "otherModelsPercent": null,
+    "totalPercent": null,
+    "cycleEnd": "2026-09-01T00:00:00Z",
+    "status": "ok",
+    "notes": "v1-Erwartung: Team-Form ohne individuelle Prozentfelder -> beide Pools 'Keine Daten', KEIN Absturz. cycleEnd wird trotzdem gelesen. (Optionale Team-Dollar-Meter erst spaeter; Shape gegen echte Antwort verifizieren.)"
+  },
+
+  "usage-summary-partial.json": {
+    "cursorModelsPercent": null,
+    "otherModelsPercent": 18.5,
+    "totalPercent": null,
+    "cycleEnd": null,
+    "status": "ok",
+    "notes": "Nur apiPercentUsed vorhanden. cursorModels + total = 'Keine Daten', kein cycleEnd -> Countdown ausblenden. Kein Absturz bei fehlenden Feldern."
+  },
+
+  "usage-summary-empty.json": {
+    "cursorModelsPercent": null,
+    "otherModelsPercent": null,
+    "totalPercent": null,
+    "cycleEnd": null,
+    "status": "ok",
+    "notes": "Leerer plan-Block. Alle Metriken 'Keine Daten'. Falls KEINE einzige verwertbare Zeile entsteht, ist ein 'requestBasedUnavailable'-Fehlerzustand akzeptabel (siehe Referenz-Mapper)."
+  },
+
+  "api-usage-requests.json": {
+    "requestsUsed": 412,
+    "requestsLimit": 500,
+    "notes": "Request-basierter Fallback (Enterprise/Team). Nur relevant, wenn usage-summary keine Prozente liefert. used = numRequests (Fallback numRequestsTotal), limit = maxRequestUsage."
+  },
+
+  "jwt-parsing": {
+    "sub_with_pipe": {
+      "input_sub": "auth0|user_ACTIVE001",
+      "expected_userID": "user_ACTIVE001",
+      "expected_session_cookie": "user_ACTIVE001%3A%3A<accessToken>"
+    },
+    "sub_without_pipe": {
+      "input_sub": "user_NOPIPE003",
+      "expected_userID": "user_NOPIPE003"
+    },
+    "needsRefresh": {
+      "tok_valid": false,
+      "tok_expiring": true,
+      "tok_expired": true,
+      "no_exp_claim": true,
+      "notes": "needsRefresh == true, wenn exp innerhalb von 300 s liegt oder kein exp lesbar ist."
+    }
+  }
+}
