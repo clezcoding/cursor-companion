@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -30,13 +31,13 @@ jobs:
         run: |
           cd .agents/skills/stitch-react-components
           npm ci || npm install
-          npm run validate
+          node scripts/validate.js examples/gold-standard-card.tsx
 
       - name: Validate stitch-react-native
         run: |
           cd .agents/skills/stitch-react-native
           npm ci || npm install
-          npm run validate
+          node scripts/validate.js examples/gold-standard-card.tsx
 
       - name: Verify JSON Integrity
         run: |
