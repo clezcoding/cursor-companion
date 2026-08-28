@@ -1,10 +1,11 @@
 import SwiftUI
 import CursorCompanionCore
 
-/// Haupt-Popover im Emil Kowalski Minimalist Stil (270px Breite) mit vergrößertem Settings-Button
 public struct PopoverView: View {
     @ObservedObject var appState: AppState
     public var onOpenSettings: (() -> Void)?
+    @Namespace private var accountTabNamespace
+    @State private var isVisible = false
 
     public init(appState: AppState, onOpenSettings: (() -> Void)? = nil) {
         self.appState = appState
@@ -13,155 +14,230 @@ public struct PopoverView: View {
 
     private var countdownString: String? {
         guard let account = appState.selectedAccount,
-              let cycleEnd = account.snapshot?.cycleEnd else {
-            return nil
-        }
+              let cycleEnd = account.snapshot?.cycleEnd else { return nil }
         let days = Calendar.current.dateComponents([.day], from: Date(), to: cycleEnd).day ?? 0
-        let planStr = account.plan?.capitalized ?? "Pro"
-        return "\(planStr) · \(max(0, days))d"
+        return "\(account.plan?.capitalized ?? "Pro") · \(max(0, days))d"
     }
 
     private var syncTimeString: String {
-        guard let lastSync = appState.lastSyncDate else {
-            return "Gerade eben"
-        }
+        guard let lastSync = appState.lastSyncDate else { return "Gerade eben" }
         let mins = Int(Date().timeIntervalSince(lastSync) / 60)
         if mins == 0 { return "just now" }
         return "\(mins)m ago"
     }
 
+    private var pacingMessage: (text: String, color: Color)? {
+        guard let account = appState.selectedAccount,
+              let cycleEnd = account.snapshot?.cycleEnd,
+              let cursorPct = account.snapshot?.cursorModelsPercent else { return nil }
+        
+        let daysTotal = 30.0 // Approximate
+        let daysLeft = Double(max(1, Calendar.current.dateComponents([.day], from: Date(), to: cycleEnd).day ?? 1))
+        let daysPassed = daysTotal - daysLeft
+        let idealPacing = (daysPassed / daysTotal) * 100.0
+        
+        if cursorPct > idealPacing + 15 {
+            return ("Verbrauch deutlich zu hoch", DesignSystem.accentError)
+        } else if cursorPct > idealPacing + 5 {
+            return ("Leicht erhöhtes Pacing", DesignSystem.accentWarning)
+        } else {
+            return ("Gutes Daily Pacing", DesignSystem.accentSuccess)
+        }
+    }
+
     public var body: some View {
         VStack(spacing: 16) {
-            // Header Row: Accounts & Cycle Info
+            // Header Row
             if !appState.accounts.isEmpty {
                 HStack(alignment: .center) {
-                    HStack(spacing: 6) {
-                        ForEach(appState.accounts) { account in
+                    // Account Segmented Control Switcher
+                    HStack(spacing: 0) {
+                        ForEach(Array(appState.accounts.enumerated()), id: \.element.id) { index, account in
                             let isSelected = (appState.selectedAccount?.id == account.id)
                             Button(action: {
-                                appState.selectAccount(id: account.id)
+                                withAnimation(DesignSystem.Animations.snappyEaseOut) {
+                                    appState.selectAccount(id: account.id)
+                                }
                             }) {
                                 HStack(spacing: 4) {
                                     if account.isActive {
-                                        Circle()
-                                            .fill(Color(red: 0.06, green: 0.73, blue: 0.51))
-                                            .frame(width: 5, height: 5)
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 8))
+                                            .foregroundColor(DesignSystem.accentSuccess)
+                                    } else {
+                                        Image(systemName: "person.circle.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(isSelected ? DesignSystem.textPrimary : DesignSystem.textSecondary)
                                     }
+                                    
                                     Text(account.label)
-                                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-                                        .foregroundColor(isSelected ? Color(white: 0.95) : Color(white: 0.5))
+                                        .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
+                                        .foregroundColor(isSelected ? DesignSystem.textPrimary : DesignSystem.textSecondary)
                                 }
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(isSelected ? Color(white: 0.12) : Color.clear)
-                                .cornerRadius(6)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    ZStack {
+                                        if isSelected {
+                                            Capsule()
+                                                .fill(DesignSystem.bgTertiary)
+                                                .matchedGeometryEffect(id: "activeTab", in: accountTabNamespace)
+                                                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                                        }
+                                    }
+                                )
                             }
                             .buttonStyle(PlainButtonStyle())
+                            .opacity(isVisible ? 1 : 0)
+                            .offset(y: isVisible ? 0 : -5)
+                            .animation(DesignSystem.Animations.snappyEaseOut.delay(Double(index) * 0.05), value: isVisible)
                         }
                     }
+                    .background(DesignSystem.bgSecondary)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(DesignSystem.borderDefault, lineWidth: 0.5))
 
                     Spacer()
 
                     if let countdown = countdownString {
                         HStack(spacing: 4) {
-                            Image(systemName: "calendar")
-                                .font(.system(size: 9))
-                                .foregroundColor(Color(white: 0.4))
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.system(size: 10))
                             Text(countdown)
-                                .font(.system(size: 11, weight: .regular, design: .monospaced))
-                                .foregroundColor(Color(white: 0.45))
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
                         }
+                        .foregroundColor(DesignSystem.textMuted)
+                        .opacity(isVisible ? 1 : 0)
+                        .animation(DesignSystem.Animations.snappyEaseOut.delay(0.2), value: isVisible)
                     }
                 }
             }
 
             // Body
-            if appState.accounts.isEmpty {
-                EmptyAccountsView {
-                    Task { await appState.refreshAllAccounts() }
-                }
-            } else if let account = appState.selectedAccount {
-                if case .loginRequired = account.status {
-                    ReauthBannerView(accountLabel: account.label) {
+            Group {
+                if appState.accounts.isEmpty {
+                    EmptyAccountsView {
                         Task { await appState.refreshAllAccounts() }
                     }
-                } else {
-                    VStack(spacing: 14) {
-                        // Pool 1: Cursor Models
-                        MetricBlockView(
-                            title: "Cursor Models",
-                            subtitle: "Composer & Grok Pool",
-                            percentUsed: account.snapshot?.cursorModelsPercent
-                        )
+                    .transition(.scale(scale: 0.95).combined(with: .opacity))
+                } else if let account = appState.selectedAccount {
+                    if case .loginRequired = account.status {
+                        ReauthBannerView(accountLabel: account.label) {
+                            Task { await appState.refreshAllAccounts() }
+                        }
+                        .transition(.scale(scale: 0.95).combined(with: .opacity))
+                    } else {
+                        VStack(spacing: 12) {
+                            MetricBlockView(
+                                title: "Cursor Models",
+                                subtitle: "Composer & Grok Pool",
+                                percentUsed: account.snapshot?.cursorModelsPercent
+                            )
+                            .opacity(isVisible ? 1 : 0)
+                            .offset(y: isVisible ? 0 : 10)
+                            .animation(DesignSystem.Animations.snappyEaseOut.delay(0.1), value: isVisible)
 
-                        // Pool 2: Other Models
-                        MetricBlockView(
-                            title: "Other Models",
-                            subtitle: "Claude 3.7 & GPT-4o",
-                            percentUsed: account.snapshot?.otherModelsPercent
-                        )
+                            MetricBlockView(
+                                title: "Other Models",
+                                subtitle: "Claude 3.7 & GPT-4o",
+                                percentUsed: account.snapshot?.otherModelsPercent
+                            )
+                            .opacity(isVisible ? 1 : 0)
+                            .offset(y: isVisible ? 0 : 10)
+                            .animation(DesignSystem.Animations.snappyEaseOut.delay(0.15), value: isVisible)
+                            
+                            if let pacing = pacingMessage {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(pacing.color)
+                                        .frame(width: 6, height: 6)
+                                        .shadow(color: pacing.color.opacity(0.5), radius: 2)
+                                    Text(pacing.text)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(pacing.color)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 4)
+                                .padding(.top, 4)
+                                .opacity(isVisible ? 1 : 0)
+                                .animation(DesignSystem.Animations.snappyEaseOut.delay(0.2), value: isVisible)
+                            }
+                            
+                            HistoryChartView(accountID: account.id)
+                                .opacity(isVisible ? 1 : 0)
+                                .offset(y: isVisible ? 0 : 10)
+                                .animation(DesignSystem.Animations.snappyEaseOut.delay(0.25), value: isVisible)
+                        }
+                        .transition(.scale(scale: 0.95).combined(with: .opacity))
                     }
                 }
             }
+            .animation(DesignSystem.Animations.smoothTransition, value: appState.selectedAccount?.id)
+            .animation(DesignSystem.Animations.smoothTransition, value: appState.accounts.isEmpty)
 
-            // Quiet Footer mit vergrößertem Settings Icon
+            // Footer
             HStack(alignment: .center) {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Circle()
-                        .fill(appState.isRefreshing ? Color(red: 0.96, green: 0.62, blue: 0.04) : Color(red: 0.06, green: 0.73, blue: 0.51))
-                        .frame(width: 5, height: 5)
+                        .fill(appState.isRefreshing ? DesignSystem.accentWarning : DesignSystem.accentSuccess)
+                        .frame(width: 6, height: 6)
+                        .scaleEffect(appState.isRefreshing ? 1.4 : 1.0)
+                        .animation(appState.isRefreshing ? Animation.easeInOut(duration: 0.8).repeatForever() : .default, value: appState.isRefreshing)
+                        .shadow(color: appState.isRefreshing ? DesignSystem.accentWarning : DesignSystem.accentSuccess, radius: 3)
                     
                     Text(appState.isRefreshing ? "updating..." : syncTimeString)
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(white: 0.45))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(DesignSystem.textMuted)
+                        .contentTransition(.numericText())
                 }
 
                 Spacer()
 
-                HStack(spacing: 8) {
-                    // Sync Button
+                HStack(spacing: 10) {
                     Button(action: {
                         Task { await appState.refreshAllAccounts() }
                     }) {
                         HStack(spacing: 4) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 11, weight: .medium))
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 10, weight: .bold))
+                                .rotationEffect(Angle(degrees: appState.isRefreshing ? 360 : 0))
+                                .animation(appState.isRefreshing ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: appState.isRefreshing)
                             Text("Sync")
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.system(size: 10, weight: .bold))
                         }
-                        .foregroundColor(Color(white: 0.7))
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 4)
-                        .background(Color(white: 0.1))
-                        .cornerRadius(5)
+                        .foregroundColor(DesignSystem.textSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(DesignSystem.bgSecondary)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+                        .cornerRadius(6)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(.springy)
 
-                    // Größeres, elegantes Settings Icon
                     Button(action: {
                         onOpenSettings?()
                     }) {
                         Image(systemName: "gearshape.fill")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Color(white: 0.75))
-                            .frame(width: 26, height: 26)
-                            .background(Color(white: 0.1))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(DesignSystem.textSecondary)
+                            .frame(width: 24, height: 24)
+                            .background(DesignSystem.bgSecondary)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
                             .cornerRadius(6)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("Einstellungen")
+                    .buttonStyle(.springy)
                 }
             }
-            .padding(.top, 4)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(Color(white: 0.12)),
-                alignment: .top
-            )
+            .padding(.top, 8)
+            .opacity(isVisible ? 1 : 0)
+            .animation(DesignSystem.Animations.snappyEaseOut.delay(0.2), value: isVisible)
         }
-        .padding(16)
+        .padding(12)
         .frame(width: 270)
-        .background(Color(red: 0.07, green: 0.07, blue: 0.07)) // #121212
+        .background(VisualEffectView(material: .popover, blendingMode: .behindWindow).ignoresSafeArea())
+        .monospacedDigit()
+        .onAppear {
+            isVisible = true
+        }
     }
 }
