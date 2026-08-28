@@ -62,12 +62,13 @@ public enum CursorUsageMapper: Sendable {
     }
 
     /// Mappt das JSON von GET https://cursor.com/api/usage?user=<id> (Request-basierter Fallback)
-    public static func mapRequestUsage(_ json: [String: Any]) throws -> (used: Int, limit: Int) {
+    public static func mapRequestUsage(_ json: [String: Any]) throws -> (used: Int, limit: Int, breakdown: [String: ModelUsage]) {
         var totalUsed = 0
         var totalLimit = 0
         var foundAny = false
+        var breakdown: [String: ModelUsage] = [:]
 
-        for (_, value) in json {
+        for (key, value) in json {
             if let dict = value as? [String: Any] {
                 let used = extractInt(dict["numRequests"]) ?? extractInt(dict["numRequestsTotal"])
                 let limit = extractInt(dict["maxRequestUsage"])
@@ -75,6 +76,7 @@ public enum CursorUsageMapper: Sendable {
                     totalUsed += u
                     totalLimit += l
                     foundAny = true
+                    breakdown[key] = ModelUsage(used: u, limit: l)
                 }
             }
         }
@@ -82,11 +84,11 @@ public enum CursorUsageMapper: Sendable {
         if !foundAny {
             if let used = extractInt(json["numRequests"]) ?? extractInt(json["numRequestsTotal"]),
                let limit = extractInt(json["maxRequestUsage"]) {
-                return (used: used, limit: limit)
+                return (used: used, limit: limit, breakdown: [:])
             }
             throw MappingError.invalidFormat
         }
 
-        return (used: totalUsed, limit: totalLimit)
+        return (used: totalUsed, limit: totalLimit, breakdown: breakdown)
     }
 }
