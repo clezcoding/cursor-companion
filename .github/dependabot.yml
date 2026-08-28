@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # Maintain GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automerge"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # Maintain npm dependencies for stitch-react-native skill
+  - package-ecosystem: "npm"
+    directory: "/.agents/skills/stitch-react-native"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "automerge"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # Maintain npm dependencies for stitch-react-components skill
+  - package-ecosystem: "npm"
+    directory: "/.agents/skills/stitch-react-components"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "automerge"
+    commit-message:
+      prefix: "chore"
+      include: "scope"

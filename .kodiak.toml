@@ -1,0 +1,36 @@
+# Kodiak Automerge Configuration
+# Docs: https://kodiakhq.com/docs/config-reference
+
+version = 1
+
+[merge]
+# Merge strategy: "squash", "merge", or "rebase"
+method = "squash"
+
+# Label that triggers automerge
+automerge_label = "automerge"
+
+# Labels that block automerge
+blocking_labels = [
+  "do-not-merge",
+  "wip",
+  "work-in-progress"
+]
+
+# Delete branch after merging PR
+delete_branch_on_merge = true
+
+[merge.message]
+title = "pull_request_title"
+body = "pull_request_body"
+
+[update]
+# Label to automatically update branch from base branch
+autoupdate_label = "autoupdate"
+
+[approve]
+# Automatically approve PRs created by trusted bots like Dependabot
+auto_approve_usernames = [
+  "dependabot[bot]",
+  "dependabot"
+]
