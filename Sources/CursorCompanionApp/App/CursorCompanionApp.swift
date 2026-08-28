@@ -1,9 +1,11 @@
-import SwiftUI
-import CursorCompanionCore
+import AppKit
 
 @main
 struct CursorCompanionMain {
     static func main() {
-        print("CursorCompanion CLI/App target ready.")
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.run()
     }
 }
