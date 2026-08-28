@@ -119,6 +119,17 @@ public final class AppState: ObservableObject {
 
             for await result in group {
                 updatedAccounts.append(result)
+                
+                let workspace = WorkspaceTrackerService.shared.getActiveWorkspace()
+                
+                if result.status == .ok, let snap = result.snapshot {
+                    AnalyticsDatabase.shared.saveSnapshot(
+                        accountID: result.id,
+                        cursorPercent: snap.cursorModelsPercent ?? 0.0,
+                        otherPercent: snap.otherModelsPercent ?? 0.0,
+                        workspace: workspace
+                    )
+                }
             }
         }
 

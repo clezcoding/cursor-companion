@@ -1,19 +1,39 @@
-name: Release Please
+name: Release App
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  pull-requests: write
+    tags:
+      - 'v*'
 
 jobs:
-  release-please:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: macos-14
     steps:
-      - uses: googleapis/release-please-action@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build App
+        run: ./build_app.sh
+
+      - name: Prepare Update Directory
+        run: |
+          mkdir -p SparkleUpdates
+          # Die App zippen für den Download
+          cd .build
+          zip -r -y -9 ../SparkleUpdates/CursorCompanion.zip CursorCompanion.app
+          cd ..
+
+      - name: Generate Appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          echo "$SPARKLE_PRIVATE_KEY" | ./.build/artifacts/sparkle/Sparkle/bin/generate_appcast --ed-key-file - SparkleUpdates/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          release-type: node
+          files: |
+            SparkleUpdates/CursorCompanion.zip
+            SparkleUpdates/appcast.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

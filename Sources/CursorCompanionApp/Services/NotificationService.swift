@@ -11,6 +11,7 @@ public final class NotificationService: @unchecked Sendable {
 
     /// Fragt Benachrichtigungsberechtigungen bei macOS an
     public func requestAuthorization() {
+        guard Bundle.main.bundleIdentifier != nil else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error = error {
                 print("Notification permission error: \(error)")
@@ -63,6 +64,7 @@ public final class NotificationService: @unchecked Sendable {
             trigger: nil // Sofort anzeigen
         )
 
+        guard Bundle.main.bundleIdentifier != nil else { return }
         UNUserNotificationCenter.current().add(request)
     }
 }

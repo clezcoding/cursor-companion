@@ -73,8 +73,14 @@ public enum CursorAuth: Sendable {
         if let sqlite = sqlite, sqlite.membershipType != "free" {
             return sqlite
         }
-        // Nur wenn SQLite fehlt oder "free" ist, als Fallback Keychain abfragen
-        let keychain = KeychainReader.readCursorTokens()
+        // Nur wenn SQLite fehlt oder "free" ist, als Fallback Keychain abfragen,
+        // sofern der Nutzer dem Keychain-Zugriff explizit zugestimmt hat.
+        let keychain: RawAuthData?
+        if UserDefaults.standard.bool(forKey: "dev.cursorcompanion.keychain_authorized") {
+            keychain = KeychainReader.readCursorTokens()
+        } else {
+            keychain = nil
+        }
         return resolveSession(sqlite: sqlite, keychain: keychain)
     }
 }

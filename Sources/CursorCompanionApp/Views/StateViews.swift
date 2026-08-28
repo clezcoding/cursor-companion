@@ -21,9 +21,14 @@ public struct ReauthBannerView: View {
             Button(action: onRetry) {
                 Text("→ Erneut prüfen")
                     .font(.system(size: 11.5, weight: .medium))
-                    .foregroundColor(Color(white: 0.95))
+                    .foregroundColor(DesignSystem.accentSuccess)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                    .background(DesignSystem.bgTertiary)
+                    .cornerRadius(4)
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
     }
@@ -47,9 +52,14 @@ public struct EmptyAccountsView: View {
             Button(action: onSync) {
                 Text("→ Anmeldedaten einlesen")
                     .font(.system(size: 11.5, weight: .medium))
-                    .foregroundColor(Color(white: 0.95))
+                    .foregroundColor(DesignSystem.accentSuccess)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                    .background(DesignSystem.bgTertiary)
+                    .cornerRadius(4)
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
     }

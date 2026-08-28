@@ -60,6 +60,7 @@ public final class StatusBarController: NSObject {
         // We let the NSHostingController calculate the size automatically
         popover.behavior = .transient
         popover.animates = true
+        popover.appearance = NSAppearance(named: .vibrantDark)
 
         let popoverContent = PopoverView(appState: appState) { [weak self] in
             self?.openSettingsWindow()

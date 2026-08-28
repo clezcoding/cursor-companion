@@ -140,6 +140,7 @@ public struct PopoverView: View {
                             .foregroundColor(DesignSystem.textSecondary)
                             .rotationEffect(Angle(degrees: appState.isRefreshing ? 360 : 0))
                             .animation(appState.isRefreshing ? Animation.linear(duration: 1).repeatForever(autoreverses: false) : .default, value: appState.isRefreshing)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
                     .modernHoverEffect(hoverColor: Color.white.opacity(0.1), cornerRadius: 4)
@@ -150,6 +151,7 @@ public struct PopoverView: View {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(DesignSystem.textSecondary)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
                     .modernHoverEffect(hoverColor: Color.white.opacity(0.1), cornerRadius: 4)

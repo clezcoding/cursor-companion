@@ -1,28 +1,49 @@
 import SwiftUI
 import CursorCompanionCore
 
-/// Vektor-Icon für die macOS-Menüleiste (Cursor Chevron mit Orbit-Punkt)
+/// Vektor-Icon für die macOS-Menüleiste (Sleeker Cursor Arrow)
 struct MenuBarIconShape: View {
     var body: some View {
         Canvas { context, size in
             let w = size.width
             let h = size.height
             
-            // Cursor Arrowhead Pfad
+            // Sleeker, modern cursor arrow
             var path = Path()
-            path.move(to: CGPoint(x: w * 0.15, y: h * 0.90))
-            path.addLine(to: CGPoint(x: w * 0.15, y: h * 0.10))
-            path.addLine(to: CGPoint(x: w * 0.90, y: h * 0.50))
-            path.addLine(to: CGPoint(x: w * 0.52, y: h * 0.58))
+            path.move(to: CGPoint(x: w * 0.2, y: h * 0.9))
+            path.addLine(to: CGPoint(x: w * 0.2, y: h * 0.1))
+            path.addLine(to: CGPoint(x: w * 0.85, y: h * 0.45))
+            path.addLine(to: CGPoint(x: w * 0.55, y: h * 0.55))
+            path.addLine(to: CGPoint(x: w * 0.7, y: h * 0.9))
+            path.addLine(to: CGPoint(x: w * 0.5, y: h * 0.95))
+            path.addLine(to: CGPoint(x: w * 0.35, y: h * 0.6))
             path.closeSubpath()
             
-            context.fill(path, with: .color(.white))
+            context.fill(path, with: .color(.primary))
             
-            // Subtiler mintfarbener Status-Orbit
-            let orbitDot = Path(ellipseIn: CGRect(x: w * 0.65, y: h * 0.70, width: w * 0.28, height: h * 0.28))
-            context.fill(orbitDot, with: .color(Color(red: 0.06, green: 0.73, blue: 0.51)))
+            // Subtiler status dot
+            let orbitDot = Path(ellipseIn: CGRect(x: w * 0.7, y: h * 0.7, width: w * 0.25, height: h * 0.25))
+            context.fill(orbitDot, with: .color(DesignSystem.accentSuccess))
         }
-        .frame(width: 13, height: 13)
+        .frame(width: 12, height: 12)
+    }
+}
+
+struct MenuBarProgressRing: View {
+    var percent: Double
+    var color: Color
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(color.opacity(0.2), lineWidth: 2)
+            
+            Circle()
+                .trim(from: 0, to: CGFloat(percent / 100.0))
+                .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 12, height: 12)
     }
 }
 
@@ -37,53 +58,48 @@ public struct MenuBarLabelView: View {
     private func colorForUsage(_ used: Double?) -> Color {
         guard let used = used else { return .secondary }
         if used >= 85.0 {
-            return Color(red: 0.96, green: 0.25, blue: 0.37) // #F43F5E (Kritisch)
+            return DesignSystem.accentError
         } else if used >= 70.0 {
-            return Color(red: 0.96, green: 0.62, blue: 0.04) // #F59E0B (Warnung)
+            return DesignSystem.accentWarning
         } else {
-            return Color(red: 0.06, green: 0.73, blue: 0.51) // #10B981 (Normal)
+            return DesignSystem.accentSuccess
         }
     }
 
     public var body: some View {
         HStack(spacing: 5) {
-            // App Icon in der Menüleiste
+            // Sleek Icon
             MenuBarIconShape()
+                .opacity(0.8)
 
             if let account = appState.activeAccount ?? appState.selectedAccount,
                let snapshot = account.snapshot {
                 
-                // Cursor Models %
+                // Cursor Models
                 if let cursorPct = snapshot.cursorModelsPercent {
-                    Text(String(format: "%.0f%%", cursorPct))
-                        .foregroundColor(colorForUsage(cursorPct))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                } else {
-                    Text("—")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                    HStack(spacing: 3) {
+                        MenuBarProgressRing(percent: cursorPct, color: colorForUsage(cursorPct))
+                        Text(String(format: "%.0f%%", cursorPct))
+                            .foregroundColor(.primary)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    }
                 }
 
-                Text("·")
-                    .foregroundColor(Color(white: 0.4))
-                    .font(.system(size: 11))
-
-                // Other Models %
+                // Other Models
                 if let otherPct = snapshot.otherModelsPercent {
-                    Text(String(format: "%.0f%%", otherPct))
-                        .foregroundColor(colorForUsage(otherPct))
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                } else {
-                    Text("—")
-                        .foregroundColor(.secondary)
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                    HStack(spacing: 3) {
+                        MenuBarProgressRing(percent: otherPct, color: colorForUsage(otherPct))
+                        Text(String(format: "%.0f%%", otherPct))
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                    }
                 }
             } else {
                 Text("Cursor")
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundColor(.primary)
             }
         }
-        .padding(.horizontal, 3)
+        .padding(.horizontal, 4)
     }
 }

@@ -227,6 +227,28 @@ public struct SettingsView: View {
                     ))
                     .toggleStyle(SwitchToggleStyle())
                 }
+
+                settingRow(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "App Updates",
+                    desc: "Nach neuen Versionen suchen"
+                ) {
+                    Button(action: {
+                        if let delegate = NSApp.delegate as? AppDelegate {
+                            delegate.updaterController?.checkForUpdates(nil)
+                        }
+                    }) {
+                        Text("Suchen")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 5)
+                            .background(Color.white)
+                            .cornerRadius(6)
+                            .shadow(color: .black.opacity(0.1), radius: 2)
+                    }
+                    .buttonStyle(.springy)
+                }
             }
         }
     }

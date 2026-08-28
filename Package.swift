@@ -15,7 +15,14 @@ let package = Package(
         .executable(
             name: "CursorCompanion",
             targets: ["CursorCompanionApp"]
+        ),
+        .executable(
+            name: "CursorCompanionWidget",
+            targets: ["CursorCompanionWidget"]
         )
+    ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.4")
     ],
     targets: [
         .target(
@@ -27,8 +34,19 @@ let package = Package(
         ),
         .executableTarget(
             name: "CursorCompanionApp",
-            dependencies: ["CursorCompanionCore"],
+            dependencies: [
+                "CursorCompanionCore",
+                .product(name: "Sparkle", package: "Sparkle")
+            ],
             path: "Sources/CursorCompanionApp",
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency")
+            ]
+        ),
+        .executableTarget(
+            name: "CursorCompanionWidget",
+            dependencies: ["CursorCompanionCore"],
+            path: "Sources/CursorCompanionWidget",
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
             ]

@@ -67,6 +67,10 @@ public final class PermissionService: ObservableObject {
 
     /// Prüft den Status der macOS-Benachrichtigungen
     public func checkNotificationStatus() {
+        guard Bundle.main.bundleIdentifier != nil else {
+            self.notificationStatus = .notDetermined
+            return
+        }
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
             let authStatus = settings.authorizationStatus
             Task { @MainActor [weak self] in
@@ -86,6 +90,7 @@ public final class PermissionService: ObservableObject {
 
     /// Fordert Benachrichtigungsberechtigung auf Klick an
     public func requestNotificationPermission() {
+        guard Bundle.main.bundleIdentifier != nil else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] granted, _ in
             Task { @MainActor [weak self] in
                 self?.notificationStatus = granted ? .authorized : .denied

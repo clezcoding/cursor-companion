@@ -34,6 +34,7 @@ public struct SegmentedHeaderView: View {
                             .foregroundColor(isSelected ? DesignSystem.textPrimary : DesignSystem.textSecondary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
+                            .contentShape(Rectangle())
                             .background(
                                 ZStack {
                                     if isSelected {
