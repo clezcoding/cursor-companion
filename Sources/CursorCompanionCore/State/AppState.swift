@@ -9,6 +9,7 @@ public final class AppState: ObservableObject {
     @Published public var accounts: [CursorAccount] = []
     @Published public var selectedAccountID: String?
     @Published public var isRefreshing: Bool = false
+    @Published public var isSyncing: Bool = false
     @Published public var lastSyncDate: Date?
     @Published public var settings: UserSettings {
         didSet {
@@ -99,8 +100,10 @@ public final class AppState: ObservableObject {
     public func refreshAllAccounts() async {
         guard !isRefreshing else { return }
         isRefreshing = true
+        isSyncing = true
         defer {
             isRefreshing = false
+            isSyncing = false
             lastSyncDate = Date()
         }
 

@@ -27,4 +27,22 @@ final class AppStateTests: XCTestCase {
         appState.selectAccount(id: "u2")
         XCTAssertEqual(appState.selectedAccount?.id, "u2")
     }
+
+    @MainActor
+    func test_isSyncing_state() async {
+        let store = AccountStore(servicePrefix: "test.cursorcompanion.sync.\(UUID().uuidString)")
+        let appState = AppState(store: store)
+        XCTAssertFalse(appState.isSyncing)
+        
+        let task = Task {
+            await appState.refreshAllAccounts()
+        }
+        
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        // Note: exact timing in async tests can be flaky, but this tests the toggle intent
+        XCTAssertTrue(appState.isSyncing)
+        
+        await task.value
+        XCTAssertFalse(appState.isSyncing)
+    }
 }
