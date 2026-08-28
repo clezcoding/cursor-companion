@@ -1,7 +1,32 @@
 import SwiftUI
 import CursorCompanionCore
 
-/// Kompakte Menüleisten-Anzeige mit dynamischer Signal-Farbe ("63% · 41%")
+/// Vektor-Icon für die macOS-Menüleiste (Cursor Chevron mit Orbit-Punkt)
+struct MenuBarIconShape: View {
+    var body: some View {
+        Canvas { context, size in
+            let w = size.width
+            let h = size.height
+            
+            // Cursor Arrowhead Pfad
+            var path = Path()
+            path.move(to: CGPoint(x: w * 0.15, y: h * 0.90))
+            path.addLine(to: CGPoint(x: w * 0.15, y: h * 0.10))
+            path.addLine(to: CGPoint(x: w * 0.90, y: h * 0.50))
+            path.addLine(to: CGPoint(x: w * 0.52, y: h * 0.58))
+            path.closeSubpath()
+            
+            context.fill(path, with: .color(.white))
+            
+            // Subtiler mintfarbener Status-Orbit
+            let orbitDot = Path(ellipseIn: CGRect(x: w * 0.65, y: h * 0.70, width: w * 0.28, height: h * 0.28))
+            context.fill(orbitDot, with: .color(Color(red: 0.06, green: 0.73, blue: 0.51)))
+        }
+        .frame(width: 13, height: 13)
+    }
+}
+
+/// Menüleisten-Anzeige mit Icon und dynamischen Prozentwerten ("⌘ 63% · 41%")
 public struct MenuBarLabelView: View {
     @ObservedObject var appState: AppState
 
@@ -21,7 +46,10 @@ public struct MenuBarLabelView: View {
     }
 
     public var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
+            // App Icon in der Menüleiste
+            MenuBarIconShape()
+
             if let account = appState.activeAccount ?? appState.selectedAccount,
                let snapshot = account.snapshot {
                 
@@ -56,6 +84,6 @@ public struct MenuBarLabelView: View {
                     .foregroundColor(.primary)
             }
         }
-        .padding(.horizontal, 2)
+        .padding(.horizontal, 3)
     }
 }
