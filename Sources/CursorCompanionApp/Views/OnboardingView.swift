@@ -1,7 +1,7 @@
 import SwiftUI
 import CursorCompanionCore
 
-/// Interaktiver 5-stufiger Onboarding & Welcome Assistant mit Berechtigungs-Abfrage
+/// Interaktiver 5-stufiger Onboarding & Welcome Assistant mit gezielter Ein-Klick-Berechtigungs-Abfrage
 public struct OnboardingView: View {
     @ObservedObject var appState: AppState
     @StateObject private var permissions = PermissionService.shared
@@ -146,13 +146,7 @@ public struct OnboardingView: View {
             }
 
             VStack(spacing: 10) {
-                permissionItem(
-                    icon: "key.fill",
-                    title: "macOS Schlüsselbund (Keychain)",
-                    desc: "Sichere & isolierte Speicherung der Multi-Account-Tokens",
-                    status: permissions.keychainStatus
-                )
-
+                // SQLite
                 permissionItem(
                     icon: "externaldrive.fill",
                     title: "Cursor Datenbank (state.vscdb)",
@@ -160,19 +154,33 @@ public struct OnboardingView: View {
                     status: permissions.sqliteStatus
                 )
 
+                // Keychain
+                permissionItem(
+                    icon: "key.fill",
+                    title: "macOS Schlüsselbund (Keychain)",
+                    desc: "Sichere Speicherung für Multi-Account-Sessions (nur 1x nötig)",
+                    status: permissions.keychainStatus,
+                    actionTitle: "Einmalig erlauben",
+                    action: {
+                        permissions.requestKeychainAuthorization()
+                    }
+                )
+
+                // Notifications
                 permissionItem(
                     icon: "bell.fill",
                     title: "macOS Benachrichtigungen",
                     desc: "Warnmeldung bei Erreichen von ≥ 85% Verbrauch",
                     status: permissions.notificationStatus,
+                    actionTitle: "Aktivieren",
                     action: {
                         permissions.requestNotificationPermission()
                     }
                 )
             }
 
-            Button("Berechtigungen erneut prüfen") {
-                permissions.checkAllPermissions()
+            Button("Status aktualisieren") {
+                permissions.refreshAll()
             }
             .buttonStyle(PlainButtonStyle())
             .font(.system(size: 11))
@@ -333,7 +341,7 @@ public struct OnboardingView: View {
                     Text("●")
                         .font(.system(size: 8))
                         .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
-                    Text("Klick auf die Zahlen in der Menüleiste öffnet das Popover.")
+                    Text("Klick auf das Icon / die Zahlen in der Menüleiste öffnet das Popover.")
                         .font(.system(size: 11.5))
                         .foregroundColor(Color(white: 0.7))
                 }
@@ -369,7 +377,7 @@ public struct OnboardingView: View {
         }
     }
 
-    private func permissionItem(icon: String, title: String, desc: String, status: PermissionStatus, action: (() -> Void)? = nil) -> some View {
+    private func permissionItem(icon: String, title: String, desc: String, status: PermissionStatus, actionTitle: String? = nil, action: (() -> Void)? = nil) -> some View {
         HStack {
             Image(systemName: icon)
                 .font(.system(size: 14))
@@ -394,28 +402,25 @@ public struct OnboardingView: View {
                 }
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
-            case .denied:
-                HStack(spacing: 4) {
-                    Image(systemName: "xmark.circle.fill")
-                    Text("Blockiert")
-                }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(Color(red: 0.96, green: 0.25, blue: 0.37))
-            case .notDetermined:
-                if let action = action {
-                    Button("Erlauben", action: action)
-                        .buttonStyle(PlainButtonStyle())
-                        .font(.system(size: 11, weight: .medium))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.white)
-                        .foregroundColor(.black)
-                        .cornerRadius(4)
+
+            case .denied, .notDetermined:
+                if let action = action, let title = actionTitle {
+                    Button(action: action) {
+                        Text(title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color(red: 0.06, green: 0.73, blue: 0.51))
+                            .cornerRadius(5)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 } else {
                     Text("Bereit")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
+
             case .notFound(let reason):
                 Text("Nicht gefunden")
                     .font(.system(size: 11))

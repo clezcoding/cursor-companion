@@ -67,9 +67,13 @@ public enum CursorAuth: Sendable {
         return sqlite
     }
 
-    /// Erkennt die aktuell aktive Session auf dem Mac
+    /// Erkennt die aktuell aktive Session auf dem Mac (liest primär SQLite ohne Keychain-Dialog)
     public static func detectActiveSession() -> RawAuthData? {
         let sqlite = SQLiteReader.readCursorAuth()
+        if let sqlite = sqlite, sqlite.membershipType != "free" {
+            return sqlite
+        }
+        // Nur wenn SQLite fehlt oder "free" ist, als Fallback Keychain abfragen
         let keychain = KeychainReader.readCursorTokens()
         return resolveSession(sqlite: sqlite, keychain: keychain)
     }

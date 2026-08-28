@@ -314,28 +314,32 @@ public struct SettingsView: View {
 
             VStack(spacing: 8) {
                 permissionRow(
-                    title: "Schlüsselbund-Zugriff (Keychain)",
-                    desc: "Sichere & isolierte Speicherung der Multi-Account-Tokens",
-                    status: permissions.keychainStatus
-                )
-
-                permissionRow(
                     title: "Cursor Datenbank (state.vscdb)",
                     desc: "Lesender Zugriff auf lokale Cursor-Session",
                     status: permissions.sqliteStatus
                 )
 
                 permissionRow(
+                    title: "Schlüsselbund-Zugriff (Keychain)",
+                    desc: "Sichere Speicherung für Multi-Account-Sessions (nur 1x nötig)",
+                    status: permissions.keychainStatus,
+                    actionTitle: "Einmalig erlauben"
+                ) {
+                    permissions.requestKeychainAuthorization()
+                }
+
+                permissionRow(
                     title: "macOS Benachrichtigungen",
                     desc: "Warnmeldungen bei hoher Kontingent-Auslastung",
-                    status: permissions.notificationStatus
+                    status: permissions.notificationStatus,
+                    actionTitle: "Aktivieren"
                 ) {
                     permissions.requestNotificationPermission()
                 }
             }
 
-            Button("Berechtigungen erneut prüfen") {
-                permissions.checkAllPermissions()
+            Button("Status aktualisieren") {
+                permissions.refreshAll()
             }
             .buttonStyle(PlainButtonStyle())
             .font(.system(size: 11, weight: .medium))
@@ -362,7 +366,7 @@ public struct SettingsView: View {
         .cornerRadius(8)
     }
 
-    private func permissionRow(title: String, desc: String, status: PermissionStatus, action: (() -> Void)? = nil) -> some View {
+    private func permissionRow(title: String, desc: String, status: PermissionStatus, actionTitle: String? = nil, action: (() -> Void)? = nil) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -382,28 +386,25 @@ public struct SettingsView: View {
                 }
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
-            case .denied:
-                HStack(spacing: 4) {
-                    Image(systemName: "xmark.circle.fill")
-                    Text("Blockiert")
-                }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(Color(red: 0.96, green: 0.25, blue: 0.37))
-            case .notDetermined:
-                if let action = action {
-                    Button("Erlauben", action: action)
-                        .buttonStyle(PlainButtonStyle())
-                        .font(.system(size: 11, weight: .medium))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.white)
-                        .foregroundColor(.black)
-                        .cornerRadius(4)
+
+            case .denied, .notDetermined:
+                if let action = action, let title = actionTitle {
+                    Button(action: action) {
+                        Text(title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color(red: 0.06, green: 0.73, blue: 0.51))
+                            .cornerRadius(5)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 } else {
-                    Text("Nicht geprüft")
+                    Text("Bereit")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
+
             case .notFound(let reason):
                 Text("Nicht gefunden")
                     .font(.system(size: 11))
