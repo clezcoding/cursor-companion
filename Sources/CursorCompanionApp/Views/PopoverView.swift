@@ -1,7 +1,7 @@
 import SwiftUI
 import CursorCompanionCore
 
-/// Haupt-Popover im Emil Kowalski Minimalist Stil (270px Breite)
+/// Haupt-Popover im Emil Kowalski Minimalist Stil (270px Breite) mit vergrößertem Settings-Button
 public struct PopoverView: View {
     @ObservedObject var appState: AppState
     public var onOpenSettings: (() -> Void)?
@@ -34,32 +34,43 @@ public struct PopoverView: View {
         VStack(spacing: 16) {
             // Header Row: Accounts & Cycle Info
             if !appState.accounts.isEmpty {
-                HStack(alignment: .firstTextBaseline) {
-                    HStack(spacing: 8) {
+                HStack(alignment: .center) {
+                    HStack(spacing: 6) {
                         ForEach(appState.accounts) { account in
+                            let isSelected = (appState.selectedAccount?.id == account.id)
                             Button(action: {
                                 appState.selectAccount(id: account.id)
                             }) {
-                                Text(account.label)
-                                    .font(.system(size: 12, weight: (appState.selectedAccount?.id == account.id) ? .semibold : .regular))
-                                    .foregroundColor((appState.selectedAccount?.id == account.id) ? Color(white: 0.95) : Color(white: 0.5))
+                                HStack(spacing: 4) {
+                                    if account.isActive {
+                                        Circle()
+                                            .fill(Color(red: 0.06, green: 0.73, blue: 0.51))
+                                            .frame(width: 5, height: 5)
+                                    }
+                                    Text(account.label)
+                                        .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                                        .foregroundColor(isSelected ? Color(white: 0.95) : Color(white: 0.5))
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(isSelected ? Color(white: 0.12) : Color.clear)
+                                .cornerRadius(6)
                             }
                             .buttonStyle(PlainButtonStyle())
-
-                            if account.id != appState.accounts.last?.id {
-                                Text("/")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(Color(white: 0.3))
-                            }
                         }
                     }
 
                     Spacer()
 
                     if let countdown = countdownString {
-                        Text(countdown)
-                            .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .foregroundColor(Color(white: 0.4))
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 9))
+                                .foregroundColor(Color(white: 0.4))
+                            Text(countdown)
+                                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                                .foregroundColor(Color(white: 0.45))
+                        }
                     }
                 }
             }
@@ -93,32 +104,52 @@ public struct PopoverView: View {
                 }
             }
 
-            // Quiet Footer
-            HStack {
-                Text(appState.isRefreshing ? "updating..." : syncTimeString)
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(white: 0.4))
+            // Quiet Footer mit vergrößertem Settings Icon
+            HStack(alignment: .center) {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(appState.isRefreshing ? Color(red: 0.96, green: 0.62, blue: 0.04) : Color(red: 0.06, green: 0.73, blue: 0.51))
+                        .frame(width: 5, height: 5)
+                    
+                    Text(appState.isRefreshing ? "updating..." : syncTimeString)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(white: 0.45))
+                }
 
                 Spacer()
 
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    // Sync Button
                     Button(action: {
                         Task { await appState.refreshAllAccounts() }
                     }) {
-                        Text("Sync")
-                            .font(.system(size: 11, weight: .regular))
-                            .foregroundColor(Color(white: 0.6))
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11, weight: .medium))
+                            Text("Sync")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundColor(Color(white: 0.7))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(Color(white: 0.1))
+                        .cornerRadius(5)
                     }
                     .buttonStyle(PlainButtonStyle())
 
+                    // Größeres, elegantes Settings Icon
                     Button(action: {
                         onOpenSettings?()
                     }) {
-                        Text("⚙")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(white: 0.6))
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color(white: 0.75))
+                            .frame(width: 26, height: 26)
+                            .background(Color(white: 0.1))
+                            .cornerRadius(6)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .help("Einstellungen")
                 }
             }
             .padding(.top, 4)

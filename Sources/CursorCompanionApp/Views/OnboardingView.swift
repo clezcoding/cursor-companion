@@ -1,9 +1,10 @@
 import SwiftUI
 import CursorCompanionCore
 
-/// Interaktiver Onboarding & Welcome Assistant für CursorCompanion
+/// Interaktiver 5-stufiger Onboarding & Welcome Assistant mit Berechtigungs-Abfrage
 public struct OnboardingView: View {
     @ObservedObject var appState: AppState
+    @StateObject private var permissions = PermissionService.shared
     @State private var currentStep: Int = 0
     public var onComplete: () -> Void
 
@@ -16,15 +17,15 @@ public struct OnboardingView: View {
         VStack(spacing: 0) {
             // Header Progress Pips
             HStack(spacing: 8) {
-                ForEach(0..<4) { index in
+                ForEach(0..<5) { index in
                     Capsule()
                         .fill(index == currentStep ? Color(red: 0.06, green: 0.73, blue: 0.51) : Color(white: 0.2))
                         .frame(width: index == currentStep ? 24 : 8, height: 4)
                         .animation(.easeInOut(duration: 0.2), value: currentStep)
                 }
             }
-            .padding(.top, 20)
-            .padding(.bottom, 16)
+            .padding(.top, 18)
+            .padding(.bottom, 14)
 
             // Step Content
             VStack {
@@ -32,21 +33,23 @@ public struct OnboardingView: View {
                 case 0:
                     stepWelcome
                 case 1:
-                    stepAccountDetection
+                    stepPermissions
                 case 2:
-                    stepConfiguration
+                    stepAccountDetection
                 case 3:
+                    stepConfiguration
+                case 4:
                     stepReady
                 default:
                     EmptyView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 32)
+            .padding(.horizontal, 28)
 
             // Footer Navigation
             HStack {
-                if currentStep > 0 && currentStep < 3 {
+                if currentStep > 0 && currentStep < 4 {
                     Button("Zurück") {
                         withAnimation { currentStep -= 1 }
                     }
@@ -56,7 +59,7 @@ public struct OnboardingView: View {
 
                 Spacer()
 
-                if currentStep < 3 {
+                if currentStep < 4 {
                     Button(action: {
                         withAnimation { currentStep += 1 }
                     }) {
@@ -86,20 +89,20 @@ public struct OnboardingView: View {
                 }
             }
             .padding(.horizontal, 28)
-            .padding(.bottom, 24)
-            .padding(.top, 12)
+            .padding(.bottom, 20)
+            .padding(.top, 10)
         }
-        .frame(width: 480, height: 380)
+        .frame(width: 500, height: 420)
         .background(Color(red: 0.08, green: 0.07, blue: 0.06))
     }
 
     // MARK: - Step 1: Welcome
     private var stepWelcome: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color(white: 0.12))
-                    .frame(width: 64, height: 64)
+                    .frame(width: 60, height: 60)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(Color(white: 0.25), lineWidth: 1)
@@ -107,10 +110,10 @@ public struct OnboardingView: View {
                 
                 Image(nsImage: NSImage(named: "AppIcon") ?? NSImage())
                     .resizable()
-                    .frame(width: 64, height: 64)
+                    .frame(width: 60, height: 60)
             }
 
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Text("Willkommen bei CursorCompanion")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.white)
@@ -119,7 +122,6 @@ public struct OnboardingView: View {
                     .font(.system(size: 12))
                     .foregroundColor(Color(white: 0.6))
                     .multilineTextAlignment(.center)
-                    .lineSpacing(2)
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -127,24 +129,71 @@ public struct OnboardingView: View {
                 featureRow(icon: "person.2.fill", color: Color(red: 0.96, green: 0.62, blue: 0.04), title: "Multi-Account Caching", desc: "Verwalte Work, Personal und Team-Konten gleichzeitig.")
                 featureRow(icon: "lock.shield.fill", color: Color(red: 0.5, green: 0.5, blue: 0.95), title: "100% Sicher & Lokal", desc: "Rein lesender Zugriff auf Cursors lokale Datenbank.")
             }
-            .padding(.top, 8)
+            .padding(.top, 6)
         }
     }
 
-    // MARK: - Step 2: Account Detection
+    // MARK: - Step 2: Permissions
+    private var stepPermissions: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 4) {
+                Text("Berechtigungen & Zugriff")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
+                Text("CursorCompanion benötigt Zugriff auf Schlüsselbund und lokale Sitzung.")
+                    .font(.system(size: 11.5))
+                    .foregroundColor(Color(white: 0.6))
+            }
+
+            VStack(spacing: 10) {
+                permissionItem(
+                    icon: "key.fill",
+                    title: "macOS Schlüsselbund (Keychain)",
+                    desc: "Sichere & isolierte Speicherung der Multi-Account-Tokens",
+                    status: permissions.keychainStatus
+                )
+
+                permissionItem(
+                    icon: "externaldrive.fill",
+                    title: "Cursor Datenbank (state.vscdb)",
+                    desc: "Lesender Zugriff auf deine lokale Cursor-Session",
+                    status: permissions.sqliteStatus
+                )
+
+                permissionItem(
+                    icon: "bell.fill",
+                    title: "macOS Benachrichtigungen",
+                    desc: "Warnmeldung bei Erreichen von ≥ 85% Verbrauch",
+                    status: permissions.notificationStatus,
+                    action: {
+                        permissions.requestNotificationPermission()
+                    }
+                )
+            }
+
+            Button("Berechtigungen erneut prüfen") {
+                permissions.checkAllPermissions()
+            }
+            .buttonStyle(PlainButtonStyle())
+            .font(.system(size: 11))
+            .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
+        }
+    }
+
+    // MARK: - Step 3: Account Detection
     private var stepAccountDetection: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 16) {
             VStack(spacing: 4) {
                 Text("Cursor-Erkennung")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.white)
-                Text("CursorCompanion liest lokale Session-Daten automatisch ein.")
+                Text("Automatische Erkennung deiner angemeldeten Cursor-Konten.")
                     .font(.system(size: 11.5))
                     .foregroundColor(Color(white: 0.6))
             }
 
             if let active = appState.activeAccount ?? appState.accounts.first {
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     HStack(spacing: 12) {
                         Circle()
                             .fill(Color(red: 0.06, green: 0.73, blue: 0.51))
@@ -178,7 +227,7 @@ public struct OnboardingView: View {
                             .stroke(Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.3), lineWidth: 1)
                     )
 
-                    Text("Deine Pools und Zyklen werden ab sofort im Hintergrund synchronisiert.")
+                    Text("Deine Nutzungspools werden ab sofort im Hintergrund synchronisiert.")
                         .font(.system(size: 11))
                         .foregroundColor(Color(white: 0.5))
                 }
@@ -215,7 +264,7 @@ public struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 3: Configuration
+    // MARK: - Step 4: Configuration
     private var stepConfiguration: some View {
         VStack(spacing: 16) {
             VStack(spacing: 4) {
@@ -256,7 +305,7 @@ public struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 4: Ready
+    // MARK: - Step 5: Ready
     private var stepReady: some View {
         VStack(spacing: 16) {
             Circle()
@@ -318,6 +367,65 @@ public struct OnboardingView: View {
                     .foregroundColor(Color(white: 0.5))
             }
         }
+    }
+
+    private func permissionItem(icon: String, title: String, desc: String, status: PermissionStatus, action: (() -> Void)? = nil) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(Color(white: 0.7))
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+                Text(desc)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            Spacer()
+
+            switch status {
+            case .authorized:
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Erlaubt")
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
+            case .denied:
+                HStack(spacing: 4) {
+                    Image(systemName: "xmark.circle.fill")
+                    Text("Blockiert")
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(Color(red: 0.96, green: 0.25, blue: 0.37))
+            case .notDetermined:
+                if let action = action {
+                    Button("Erlauben", action: action)
+                        .buttonStyle(PlainButtonStyle())
+                        .font(.system(size: 11, weight: .medium))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.white)
+                        .foregroundColor(.black)
+                        .cornerRadius(4)
+                } else {
+                    Text("Bereit")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            case .notFound(let reason):
+                Text("Nicht gefunden")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.96, green: 0.62, blue: 0.04))
+                    .help(reason)
+            }
+        }
+        .padding(10)
+        .background(Color(white: 0.11))
+        .cornerRadius(8)
     }
 
     private func configToggleRow(title: String, desc: String, binding: Binding<Bool>) -> some View {

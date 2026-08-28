@@ -26,8 +26,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             // Kaltstart: Gecachte Daten sofort laden (<1s)
             await state.loadCachedAccounts()
             
-            // Erststart-Check: Falls noch kein Onboarding abgeschlossen und keine Accounts vorhanden sind
-            if !state.settings.hasCompletedOnboarding && state.accounts.isEmpty {
+            // Erststart-Check: Öffnet den Onboarding-Assistenten beim allerersten Start
+            if !state.settings.hasCompletedOnboarding {
                 statusController.openOnboardingWindow()
             }
 

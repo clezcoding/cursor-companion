@@ -1,13 +1,32 @@
 import SwiftUI
 import CursorCompanionCore
 
-/// Einstellungen-Fenster für CursorCompanion mit Tabs und vollem Funktionsumfang
+/// Modernes, edles macOS-Einstellungsfenster für CursorCompanion
 public struct SettingsView: View {
     @ObservedObject var appState: AppState
-    @State private var selectedTab: Int = 0
+    @StateObject private var permissions = PermissionService.shared
+    @State private var selectedTab: SettingsTab = .general
     @State private var renamingAccountID: String?
     @State private var renamingText: String = ""
     public var onOpenOnboarding: (() -> Void)?
+
+    public enum SettingsTab: String, CaseIterable, Identifiable {
+        case general = "Allgemein"
+        case accounts = "Accounts"
+        case permissions = "Berechtigungen"
+        case about = "Über"
+
+        public var id: String { rawValue }
+
+        public var iconName: String {
+            switch self {
+            case .general: return "gearshape.fill"
+            case .accounts: return "person.2.fill"
+            case .permissions: return "lock.shield.fill"
+            case .about: return "info.circle.fill"
+            }
+        }
+    }
 
     public init(appState: AppState, onOpenOnboarding: (() -> Void)? = nil) {
         self.appState = appState
@@ -15,227 +34,385 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            // Segmented Tab Picker
-            Picker("", selection: $selectedTab) {
-                Text("Allgemein").tag(0)
-                Text("Accounts (\(appState.accounts.count))").tag(1)
-                Text("Über").tag(2)
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-
-            Divider()
-                .background(Color(white: 0.15))
-
-            // Tab Content
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    switch selectedTab {
-                    case 0:
-                        tabGeneral
-                    case 1:
-                        tabAccounts
-                    case 2:
-                        AboutView()
-                    default:
-                        EmptyView()
-                    }
+        HStack(spacing: 0) {
+            // Sidebar Navigation
+            VStack(alignment: .leading, spacing: 4) {
+                // App Title & Mini Icon
+                HStack(spacing: 8) {
+                    Image(nsImage: NSImage(named: "AppIcon") ?? NSImage())
+                        .resizable()
+                        .frame(width: 20, height: 20)
+                    Text("CursorCompanion")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
                 }
-                .padding(20)
-            }
+                .padding(.horizontal, 12)
+                .padding(.top, 14)
+                .padding(.bottom, 12)
 
-            Divider()
-                .background(Color(white: 0.15))
+                ForEach(SettingsTab.allCases) { tab in
+                    Button(action: { selectedTab = tab }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: tab.iconName)
+                                .font(.system(size: 12))
+                                .frame(width: 16)
+                            Text(tab.rawValue)
+                                .font(.system(size: 12, weight: selectedTab == tab ? .semibold : .regular))
+                            Spacer()
+                        }
+                        .foregroundColor(selectedTab == tab ? .white : Color(white: 0.6))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(selectedTab == tab ? Color(white: 0.16) : Color.clear)
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
 
-            // Bottom Actions
-            HStack {
-                Button("Onboarding-Assistent öffnen") {
+                Spacer()
+
+                Button("Onboarding öffnen") {
                     onOpenOnboarding?()
                 }
                 .buttonStyle(PlainButtonStyle())
                 .font(.system(size: 11))
-                .foregroundColor(Color(white: 0.6))
+                .foregroundColor(Color(white: 0.5))
+                .padding(.horizontal, 10)
+                .padding(.bottom, 12)
+            }
+            .frame(width: 145)
+            .background(Color(red: 0.09, green: 0.08, blue: 0.07))
 
+            Divider()
+                .background(Color(white: 0.12))
+
+            // Main Content Area
+            VStack(alignment: .leading, spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        switch selectedTab {
+                        case .general:
+                            sectionGeneral
+                        case .accounts:
+                            sectionAccounts
+                        case .permissions:
+                            sectionPermissions
+                        case .about:
+                            AboutView()
+                        }
+                    }
+                    .padding(20)
+                }
+
+                Divider()
+                    .background(Color(white: 0.12))
+
+                HStack {
+                    Spacer()
+                    Button("Fertig") {
+                        NSApp.keyWindow?.close()
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 5)
+                    .background(Color.white)
+                    .cornerRadius(5)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(white: 0.06))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 500, height: 380)
+        .background(Color(red: 0.07, green: 0.06, blue: 0.05))
+    }
+
+    // MARK: - General Section
+    private var sectionGeneral: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Allgemeine Einstellungen")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.white)
+
+            VStack(spacing: 8) {
+                settingRow(
+                    title: "Abfrageintervall",
+                    desc: "Hintergrundabfrage der Kontingente"
+                ) {
+                    Picker("", selection: $appState.settings.refreshIntervalMinutes) {
+                        Text("1 Min.").tag(1)
+                        Text("5 Min. (Standard)").tag(5)
+                        Text("15 Min.").tag(15)
+                        Text("30 Min.").tag(30)
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    .frame(width: 130)
+                }
+
+                settingRow(
+                    title: "Bei macOS-Login starten",
+                    desc: "CursorCompanion automatisch im Hintergrund öffnen"
+                ) {
+                    Toggle("", isOn: Binding(
+                        get: { appState.settings.launchAtLogin },
+                        set: { val in
+                            appState.settings.launchAtLogin = val
+                            LaunchAtLoginHelper.setEnabled(val)
+                        }
+                    ))
+                    .toggleStyle(SwitchToggleStyle())
+                }
+
+                settingRow(
+                    title: "Warnung bei hohem Verbrauch",
+                    desc: "macOS-Benachrichtigung bei ≥ 85% Verbrauch"
+                ) {
+                    Toggle("", isOn: Binding(
+                        get: { appState.settings.notifyHighUsage },
+                        set: { val in
+                            appState.settings.notifyHighUsage = val
+                            if val { permissions.requestNotificationPermission() }
+                        }
+                    ))
+                    .toggleStyle(SwitchToggleStyle())
+                }
+            }
+        }
+    }
+
+    // MARK: - Accounts Section
+    private var sectionAccounts: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Verwaltete Accounts")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
                 Spacer()
-
-                Button("Schließen") {
-                    NSApp.keyWindow?.close()
+                Button(action: {
+                    Task { await appState.syncActiveCursorAccount() }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Jetzt scannen")
+                    }
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
                 }
                 .buttonStyle(PlainButtonStyle())
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(Color(white: 0.05))
-        }
-        .frame(width: 420, height: 380)
-        .background(Color(red: 0.08, green: 0.07, blue: 0.06))
-    }
 
-    // MARK: - Tab: General
-    private var tabGeneral: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Abfrageintervall
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Abfrageintervall")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                    Text("Hintergrundabfrage der Kontingente")
-                        .font(.system(size: 10.5))
-                        .foregroundColor(Color(white: 0.5))
-                }
-                Spacer()
-                Picker("", selection: $appState.settings.refreshIntervalMinutes) {
-                    Text("1 Min.").tag(1)
-                    Text("5 Min. (Standard)").tag(5)
-                    Text("15 Min.").tag(15)
-                    Text("30 Min.").tag(30)
-                }
-                .pickerStyle(MenuPickerStyle())
-                .frame(width: 140)
-            }
-            .padding(10)
-            .background(Color(white: 0.11))
-            .cornerRadius(8)
+            if appState.accounts.isEmpty {
+                Text("Keine Accounts gecacht. Bitte öffne die Cursor-App und melde dich an.")
+                    .font(.system(size: 11.5))
+                    .foregroundColor(Color(white: 0.5))
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(appState.accounts) { account in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(account.label)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.white)
 
-            // Autostart
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Bei macOS-Login starten")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                    Text("CursorCompanion automatisch im Hintergrund öffnen")
-                        .font(.system(size: 10.5))
-                        .foregroundColor(Color(white: 0.5))
-                }
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { appState.settings.launchAtLogin },
-                    set: { val in
-                        appState.settings.launchAtLogin = val
-                        LaunchAtLoginHelper.setEnabled(val)
-                    }
-                ))
-                .toggleStyle(SwitchToggleStyle())
-            }
-            .padding(10)
-            .background(Color(white: 0.11))
-            .cornerRadius(8)
+                                    if account.isActive {
+                                        Text("AKTIV")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1)
+                                            .background(Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.2))
+                                            .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
+                                            .cornerRadius(3)
+                                    } else {
+                                        Text("CACHED")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1)
+                                            .background(Color(white: 0.15))
+                                            .foregroundColor(Color(white: 0.6))
+                                            .cornerRadius(3)
+                                    }
 
-            // Benachrichtigungen
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Warnung bei hohem Verbrauch")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                    Text("macOS-Benachrichtigung bei ≥ 85% Verbrauch")
-                        .font(.system(size: 10.5))
-                        .foregroundColor(Color(white: 0.5))
-                }
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { appState.settings.notifyHighUsage },
-                    set: { val in
-                        appState.settings.notifyHighUsage = val
-                        if val { NotificationService.shared.requestAuthorization() }
-                    }
-                ))
-                .toggleStyle(SwitchToggleStyle())
-            }
-            .padding(10)
-            .background(Color(white: 0.11))
-            .cornerRadius(8)
-        }
-    }
-
-    // MARK: - Tab: Accounts
-    private var tabAccounts: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach(appState.accounts) { account in
-                VStack(spacing: 8) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(account.label)
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.white)
-
-                                if account.isActive {
-                                    Text("AKTIV")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 1)
-                                        .background(Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.2))
-                                        .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
-                                        .cornerRadius(3)
-                                } else {
-                                    Text("CACHED")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 1)
-                                        .background(Color(white: 0.15))
-                                        .foregroundColor(Color(white: 0.6))
-                                        .cornerRadius(3)
+                                    if let plan = account.plan {
+                                        Text(plan.uppercased())
+                                            .font(.system(size: 9, weight: .bold))
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1)
+                                            .background(Color(white: 0.12))
+                                            .foregroundColor(Color(red: 0.96, green: 0.62, blue: 0.04))
+                                            .cornerRadius(3)
+                                    }
                                 }
+
+                                Text(account.id)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundColor(Color(white: 0.4))
                             }
 
-                            Text(account.id)
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(Color(white: 0.4))
-                        }
+                            Spacer()
 
-                        Spacer()
-
-                        Button("Umbenennen") {
-                            renamingAccountID = account.id
-                            renamingText = account.label
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(white: 0.8))
-
-                        if !account.isActive {
-                            Button("Entfernen") {
-                                Task { await appState.removeAccount(accountID: account.id) }
+                            Button("Umbenennen") {
+                                renamingAccountID = account.id
+                                renamingText = account.label
                             }
                             .buttonStyle(PlainButtonStyle())
                             .font(.system(size: 11))
-                            .foregroundColor(Color(red: 0.96, green: 0.25, blue: 0.37))
-                        }
-                    }
+                            .foregroundColor(Color(white: 0.8))
 
-                    if renamingAccountID == account.id {
-                        HStack {
-                            TextField("Neues Label", text: $renamingText)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                            
-                            Button("Speichern") {
-                                Task {
-                                    await appState.updateAccountLabel(accountID: account.id, newLabel: renamingText)
+                            if !account.isActive {
+                                Button("Entfernen") {
+                                    Task { await appState.removeAccount(accountID: account.id) }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(red: 0.96, green: 0.25, blue: 0.37))
+                            }
+                        }
+
+                        if renamingAccountID == account.id {
+                            HStack {
+                                TextField("Neues Label", text: $renamingText)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                
+                                Button("Speichern") {
+                                    Task {
+                                        await appState.updateAccountLabel(accountID: account.id, newLabel: renamingText)
+                                        renamingAccountID = nil
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .font(.system(size: 11, weight: .semibold))
+
+                                Button("Abbrechen") {
                                     renamingAccountID = nil
                                 }
+                                .buttonStyle(PlainButtonStyle())
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(white: 0.6))
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            .font(.system(size: 11, weight: .semibold))
-
-                            Button("Abbrechen") {
-                                renamingAccountID = nil
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(white: 0.6))
+                            .padding(.top, 4)
                         }
                     }
+                    .padding(10)
+                    .background(Color(white: 0.11))
+                    .cornerRadius(8)
                 }
-                .padding(10)
-                .background(Color(white: 0.11))
-                .cornerRadius(8)
             }
         }
+    }
+
+    // MARK: - Permissions Section
+    private var sectionPermissions: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("System-Berechtigungen & Status")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.white)
+
+            VStack(spacing: 8) {
+                permissionRow(
+                    title: "Schlüsselbund-Zugriff (Keychain)",
+                    desc: "Sichere & isolierte Speicherung der Multi-Account-Tokens",
+                    status: permissions.keychainStatus
+                )
+
+                permissionRow(
+                    title: "Cursor Datenbank (state.vscdb)",
+                    desc: "Lesender Zugriff auf lokale Cursor-Session",
+                    status: permissions.sqliteStatus
+                )
+
+                permissionRow(
+                    title: "macOS Benachrichtigungen",
+                    desc: "Warnmeldungen bei hoher Kontingent-Auslastung",
+                    status: permissions.notificationStatus
+                ) {
+                    permissions.requestNotificationPermission()
+                }
+            }
+
+            Button("Berechtigungen erneut prüfen") {
+                permissions.checkAllPermissions()
+            }
+            .buttonStyle(PlainButtonStyle())
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
+            .padding(.top, 4)
+        }
+    }
+
+    private func settingRow<Content: View>(title: String, desc: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+                Text(desc)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            Spacer()
+            content()
+        }
+        .padding(10)
+        .background(Color(white: 0.11))
+        .cornerRadius(8)
+    }
+
+    private func permissionRow(title: String, desc: String, status: PermissionStatus, action: (() -> Void)? = nil) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+                Text(desc)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color(white: 0.5))
+            }
+            Spacer()
+
+            switch status {
+            case .authorized:
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Erlaubt")
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
+            case .denied:
+                HStack(spacing: 4) {
+                    Image(systemName: "xmark.circle.fill")
+                    Text("Blockiert")
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(Color(red: 0.96, green: 0.25, blue: 0.37))
+            case .notDetermined:
+                if let action = action {
+                    Button("Erlauben", action: action)
+                        .buttonStyle(PlainButtonStyle())
+                        .font(.system(size: 11, weight: .medium))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.white)
+                        .foregroundColor(.black)
+                        .cornerRadius(4)
+                } else {
+                    Text("Nicht geprüft")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+            case .notFound(let reason):
+                Text("Nicht gefunden")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.96, green: 0.62, blue: 0.04))
+                    .help(reason)
+            }
+        }
+        .padding(10)
+        .background(Color(white: 0.11))
+        .cornerRadius(8)
     }
 }

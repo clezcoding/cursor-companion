@@ -1,14 +1,20 @@
 import Foundation
 import Combine
 
-/// Zentraler, beobachtbarer Zustand für die SwiftUI-Oberfläche
+/// Zentraler, beobachtbarer Zustand für die SwiftUI-Oberfläche mit UserDefaults-Persistenz
 @MainActor
 public final class AppState: ObservableObject {
+    private static let settingsStorageKey = "dev.cursorcompanion.user_settings"
+
     @Published public var accounts: [CursorAccount] = []
     @Published public var selectedAccountID: String?
     @Published public var isRefreshing: Bool = false
     @Published public var lastSyncDate: Date?
-    @Published public var settings: UserSettings = UserSettings()
+    @Published public var settings: UserSettings {
+        didSet {
+            saveSettings()
+        }
+    }
 
     public var selectedAccount: CursorAccount? {
         if let id = selectedAccountID {
@@ -27,6 +33,19 @@ public final class AppState: ObservableObject {
     public init(store: AccountStore, client: CursorClient = CursorClient()) {
         self.store = store
         self.client = client
+        
+        if let data = UserDefaults.standard.data(forKey: Self.settingsStorageKey),
+           let saved = try? JSONDecoder().decode(UserSettings.self, from: data) {
+            self.settings = saved
+        } else {
+            self.settings = UserSettings()
+        }
+    }
+
+    private func saveSettings() {
+        if let data = try? JSONEncoder().encode(settings) {
+            UserDefaults.standard.set(data, forKey: Self.settingsStorageKey)
+        }
     }
 
     /// Kaltstart: Lädt sofort alle gecachten Accounts aus dem lokalen Speicher (< 1s)
