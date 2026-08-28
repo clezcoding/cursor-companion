@@ -15,7 +15,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         let state = AppState(store: store)
         self.appState = state
 
-        self.statusBarController = StatusBarController(appState: state)
+        let statusController = StatusBarController(appState: state)
+        self.statusBarController = statusController
 
         let sched = UsageScheduler(appState: state)
         self.scheduler = sched
@@ -24,8 +25,19 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             // Kaltstart: Gecachte Daten sofort laden (<1s)
             await state.loadCachedAccounts()
+            
+            // Erststart-Check: Falls noch kein Onboarding abgeschlossen und keine Accounts vorhanden sind
+            if !state.settings.hasCompletedOnboarding && state.accounts.isEmpty {
+                statusController.openOnboardingWindow()
+            }
+
             // Im Hintergrund frische Daten von Cursor einholen
             await state.refreshAllAccounts()
+
+            // Benachrichtigungen prüfen
+            for account in state.accounts {
+                NotificationService.shared.checkAndNotify(account: account, settings: state.settings)
+            }
         }
     }
 

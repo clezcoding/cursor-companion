@@ -2,13 +2,14 @@ import AppKit
 import SwiftUI
 import CursorCompanionCore
 
-/// Steuert den NSStatusItem in der macOS-Menüleiste und das NSPopover
+/// Steuert den NSStatusItem in der macOS-Menüleiste, das NSPopover und die Fenster
 @MainActor
 public final class StatusBarController: NSObject {
     private var statusItem: NSStatusItem
     private var popover: NSPopover
     private let appState: AppState
     private var settingsWindow: NSWindow?
+    private var onboardingWindow: NSWindow?
 
     public init(appState: AppState) {
         self.appState = appState
@@ -66,19 +67,48 @@ public final class StatusBarController: NSObject {
 
         if settingsWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 360, height: 320),
+                contentRect: NSRect(x: 0, y: 0, width: 420, height: 380),
                 styleMask: [.titled, .closable],
                 backing: .buffered,
                 defer: false
             )
             window.center()
             window.title = "CursorCompanion Einstellungen"
-            window.contentView = NSHostingView(rootView: SettingsView(appState: appState))
+            let view = SettingsView(appState: appState) { [weak self] in
+                self?.openOnboardingWindow()
+            }
+            window.contentView = NSHostingView(rootView: view)
             window.isReleasedWhenClosed = false
             self.settingsWindow = window
         }
 
         settingsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    public func openOnboardingWindow() {
+        popover.performClose(nil)
+        settingsWindow?.performClose(nil)
+
+        if onboardingWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 480, height: 380),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            window.center()
+            window.title = "Willkommen bei CursorCompanion"
+            let view = OnboardingView(appState: appState) { [weak self] in
+                self?.onboardingWindow?.close()
+                self?.togglePopover()
+            }
+            window.contentView = NSHostingView(rootView: view)
+            window.isReleasedWhenClosed = false
+            self.onboardingWindow = window
+        }
+
+        onboardingWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 }

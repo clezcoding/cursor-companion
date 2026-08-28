@@ -79,15 +79,15 @@ public struct PopoverView: View {
                         // Pool 1: Cursor Models
                         MetricBlockView(
                             title: "Cursor Models",
-                            percent: account.snapshot?.cursorModelsPercent,
-                            tintColor: Color(red: 0.06, green: 0.73, blue: 0.51) // #10B981
+                            subtitle: "Composer & Grok Pool",
+                            percentUsed: account.snapshot?.cursorModelsPercent
                         )
 
                         // Pool 2: Other Models
                         MetricBlockView(
                             title: "Other Models",
-                            percent: account.snapshot?.otherModelsPercent,
-                            tintColor: Color(red: 0.96, green: 0.62, blue: 0.04) // #F59E0B
+                            subtitle: "Claude 3.7 & GPT-4o",
+                            percentUsed: account.snapshot?.otherModelsPercent
                         )
                     }
                 }

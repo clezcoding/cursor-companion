@@ -101,6 +101,9 @@ public struct UserSettings: Sendable, Codable, Equatable {
     public var refreshIntervalMinutes: Int
     public var launchAtLogin: Bool
     public var menubarDisplayMode: MenubarDisplayMode
+    public var hasCompletedOnboarding: Bool
+    public var notifyHighUsage: Bool
+    public var highUsageThresholdPercent: Double
 
     public enum MenubarDisplayMode: String, Sendable, Codable, CaseIterable {
         case textWithDots = "textWithDots"
@@ -111,10 +114,16 @@ public struct UserSettings: Sendable, Codable, Equatable {
     public init(
         refreshIntervalMinutes: Int = 5,
         launchAtLogin: Bool = false,
-        menubarDisplayMode: MenubarDisplayMode = .textWithDots
+        menubarDisplayMode: MenubarDisplayMode = .textWithDots,
+        hasCompletedOnboarding: Bool = false,
+        notifyHighUsage: Bool = true,
+        highUsageThresholdPercent: Double = 85.0
     ) {
         self.refreshIntervalMinutes = refreshIntervalMinutes
         self.launchAtLogin = launchAtLogin
         self.menubarDisplayMode = menubarDisplayMode
+        self.hasCompletedOnboarding = hasCompletedOnboarding
+        self.notifyHighUsage = notifyHighUsage
+        self.highUsageThresholdPercent = highUsageThresholdPercent
     }
 }
