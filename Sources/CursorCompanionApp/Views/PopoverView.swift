@@ -12,12 +12,7 @@ public struct PopoverView: View {
         self.onOpenSettings = onOpenSettings
     }
 
-    private var countdownString: String? {
-        guard let account = appState.selectedAccount,
-              let cycleEnd = account.snapshot?.cycleEnd else { return nil }
-        let days = Calendar.current.dateComponents([.day], from: Date(), to: cycleEnd).day ?? 0
-        return "\(account.plan?.capitalized ?? "Pro") · \(max(0, days))d"
-    }
+
 
     private var syncTimeString: String {
         guard let lastSync = appState.lastSyncDate else { return "Gerade eben" }
@@ -49,68 +44,7 @@ public struct PopoverView: View {
         VStack(spacing: 16) {
             // Header Row
             if !appState.accounts.isEmpty {
-                HStack(alignment: .center) {
-                    // Account Segmented Control Switcher
-                    HStack(spacing: 0) {
-                        ForEach(Array(appState.accounts.enumerated()), id: \.element.id) { index, account in
-                            let isSelected = (appState.selectedAccount?.id == account.id)
-                            Button(action: {
-                                withAnimation(DesignSystem.Animations.snappyEaseOut) {
-                                    appState.selectAccount(id: account.id)
-                                }
-                            }) {
-                                HStack(spacing: 4) {
-                                    if account.isActive {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.system(size: 8))
-                                            .foregroundColor(DesignSystem.accentSuccess)
-                                    } else {
-                                        Image(systemName: "person.circle.fill")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(isSelected ? DesignSystem.textPrimary : DesignSystem.textSecondary)
-                                    }
-                                    
-                                    Text(account.label)
-                                        .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
-                                        .foregroundColor(isSelected ? DesignSystem.textPrimary : DesignSystem.textSecondary)
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(
-                                    ZStack {
-                                        if isSelected {
-                                            Capsule()
-                                                .fill(DesignSystem.bgTertiary)
-                                                .matchedGeometryEffect(id: "activeTab", in: accountTabNamespace)
-                                                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-                                        }
-                                    }
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .opacity(isVisible ? 1 : 0)
-                            .offset(y: isVisible ? 0 : -5)
-                            .animation(DesignSystem.Animations.snappyEaseOut.delay(Double(index) * 0.05), value: isVisible)
-                        }
-                    }
-                    .background(DesignSystem.bgSecondary)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(DesignSystem.borderDefault, lineWidth: 0.5))
-
-                    Spacer()
-
-                    if let countdown = countdownString {
-                        HStack(spacing: 4) {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 10))
-                            Text(countdown)
-                                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        }
-                        .foregroundColor(DesignSystem.textMuted)
-                        .opacity(isVisible ? 1 : 0)
-                        .animation(DesignSystem.Animations.snappyEaseOut.delay(0.2), value: isVisible)
-                    }
-                }
+                    SegmentedHeaderView(appState: appState)
             }
 
             // Body
