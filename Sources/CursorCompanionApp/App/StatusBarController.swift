@@ -10,6 +10,7 @@ public final class StatusBarController: NSObject {
     private let appState: AppState
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var globalEventMonitor: Any?
 
     public init(appState: AppState) {
         self.appState = appState
@@ -19,6 +20,21 @@ public final class StatusBarController: NSObject {
 
         setupStatusButton()
         setupPopover()
+        setupGlobalHotkey()
+    }
+
+    private func setupGlobalHotkey() {
+        let opts: NSDictionary = ["AXTrustedCheckOptionPrompt": true]
+        _ = AXIsProcessTrustedWithOptions(opts)
+        
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // C key is keyCode 8
+            if event.keyCode == 8 && event.modifierFlags.contains([.command, .shift]) {
+                DispatchQueue.main.async {
+                    self?.togglePopover()
+                }
+            }
+        }
     }
 
     private func setupStatusButton() {
@@ -41,14 +57,16 @@ public final class StatusBarController: NSObject {
     }
 
     private func setupPopover() {
-        popover.contentSize = NSSize(width: 270, height: 180)
+        // We let the NSHostingController calculate the size automatically
         popover.behavior = .transient
         popover.animates = true
 
         let popoverContent = PopoverView(appState: appState) { [weak self] in
             self?.openSettingsWindow()
         }
-        popover.contentViewController = NSHostingController(rootView: popoverContent)
+        let hostingController = NSHostingController(rootView: popoverContent)
+        hostingController.sizingOptions = .intrinsicContentSize
+        popover.contentViewController = hostingController
     }
 
     @objc public func togglePopover() {
@@ -67,7 +85,7 @@ public final class StatusBarController: NSObject {
 
         if settingsWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 420, height: 380),
+                contentRect: NSRect(x: 0, y: 0, width: 600, height: 400),
                 styleMask: [.titled, .closable],
                 backing: .buffered,
                 defer: false
@@ -92,7 +110,7 @@ public final class StatusBarController: NSObject {
 
         if onboardingWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 480, height: 380),
+                contentRect: NSRect(x: 0, y: 0, width: 440, height: 560),
                 styleMask: [.titled, .closable],
                 backing: .buffered,
                 defer: false

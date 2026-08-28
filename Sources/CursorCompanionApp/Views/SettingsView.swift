@@ -1,7 +1,7 @@
 import SwiftUI
 import CursorCompanionCore
 
-/// Modernes, edles macOS-Einstellungsfenster für CursorCompanion
+/// Modernes, edles macOS-Einstellungsfenster für CursorCompanion V2
 public struct SettingsView: View {
     @ObservedObject var appState: AppState
     @StateObject private var permissions = PermissionService.shared
@@ -9,6 +9,8 @@ public struct SettingsView: View {
     @State private var renamingAccountID: String?
     @State private var renamingText: String = ""
     public var onOpenOnboarding: (() -> Void)?
+    @Namespace private var tabNamespace
+    @State private var isVisible = false
 
     public enum SettingsTab: String, CaseIterable, Identifiable {
         case general = "Allgemein"
@@ -36,109 +38,149 @@ public struct SettingsView: View {
     public var body: some View {
         HStack(spacing: 0) {
             // Sidebar Navigation
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 // App Title & Mini Icon
                 HStack(spacing: 8) {
                     Image(nsImage: NSImage(named: "AppIcon") ?? NSImage())
                         .resizable()
-                        .frame(width: 20, height: 20)
+                        .frame(width: 24, height: 24)
+                        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
                     Text("CursorCompanion")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(DesignSystem.textPrimary)
                 }
                 .padding(.horizontal, 12)
-                .padding(.top, 14)
-                .padding(.bottom, 12)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+                .interactiveTilt()
 
                 ForEach(SettingsTab.allCases) { tab in
-                    Button(action: { selectedTab = tab }) {
-                        HStack(spacing: 8) {
+                    Button(action: {
+                        withAnimation(DesignSystem.Animations.snappyEaseOut) {
+                            selectedTab = tab
+                        }
+                    }) {
+                        HStack(spacing: 10) {
                             Image(systemName: tab.iconName)
-                                .font(.system(size: 12))
-                                .frame(width: 16)
+                                .font(.system(size: 13))
+                                .frame(width: 18)
                             Text(tab.rawValue)
-                                .font(.system(size: 12, weight: selectedTab == tab ? .semibold : .regular))
+                                .font(.system(size: 12, weight: selectedTab == tab ? .semibold : .medium))
                             Spacer()
                         }
-                        .foregroundColor(selectedTab == tab ? .white : Color(white: 0.6))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(selectedTab == tab ? Color(white: 0.16) : Color.clear)
-                        .cornerRadius(6)
+                        .foregroundColor(selectedTab == tab ? DesignSystem.textPrimary : DesignSystem.textSecondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            ZStack {
+                                if selectedTab == tab {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(DesignSystem.bgTertiary)
+                                        .matchedGeometryEffect(id: "activeSidebarTab", in: tabNamespace)
+                                        .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
+                                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+                                }
+                            }
+                        )
+                        .modernHoverEffect(hoverColor: DesignSystem.bgSecondary, cornerRadius: 8)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
 
                 Spacer()
 
-                Button("Onboarding öffnen") {
+                Button(action: {
                     onOpenOnboarding?()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles.rectangle.stack.fill")
+                            .font(.system(size: 12))
+                        Text("Onboarding öffnen")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(DesignSystem.textMuted)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .modernHoverEffect(hoverColor: DesignSystem.bgSecondary)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .font(.system(size: 11))
-                .foregroundColor(Color(white: 0.5))
-                .padding(.horizontal, 10)
-                .padding(.bottom, 12)
+                .padding(.bottom, 16)
             }
-            .frame(width: 145)
-            .background(Color(red: 0.09, green: 0.08, blue: 0.07))
+            .frame(width: 170)
+            .padding(.horizontal, 8)
+            .background(VisualEffectView(material: .sidebar, blendingMode: .behindWindow, state: .active))
 
             Divider()
-                .background(Color(white: 0.12))
+                .background(DesignSystem.borderDefault)
 
             // Main Content Area
             VStack(alignment: .leading, spacing: 0) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        switch selectedTab {
-                        case .general:
-                            sectionGeneral
-                        case .accounts:
-                            sectionAccounts
-                        case .permissions:
-                            sectionPermissions
-                        case .about:
-                            AboutView()
+                    VStack(alignment: .leading, spacing: 24) {
+                        Group {
+                            switch selectedTab {
+                            case .general:
+                                sectionGeneral
+                            case .accounts:
+                                sectionAccounts
+                            case .permissions:
+                                sectionPermissions
+                            case .about:
+                                AboutView()
+                            }
                         }
+                        .transition(.scale(scale: 0.98).combined(with: .opacity))
                     }
-                    .padding(20)
+                    .padding(24)
                 }
+                .animation(DesignSystem.Animations.snappyEaseOut, value: selectedTab)
 
                 Divider()
-                    .background(Color(white: 0.12))
+                    .background(DesignSystem.borderDefault)
 
                 HStack {
                     Spacer()
-                    Button("Fertig") {
+                    Button(action: {
                         NSApp.keyWindow?.close()
+                    }) {
+                        Text("Fertig")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .background(Color.white)
+                            .cornerRadius(6)
+                            .shadow(color: .white.opacity(0.3), radius: 4)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 5)
-                    .background(Color.white)
-                    .cornerRadius(5)
+                    .buttonStyle(.modern)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(white: 0.06))
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(VisualEffectView(material: .titlebar, blendingMode: .withinWindow, state: .active))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DesignSystem.bgPrimary)
         }
-        .frame(width: 500, height: 380)
-        .background(Color(red: 0.07, green: 0.06, blue: 0.05))
+        .frame(width: 600, height: 400)
+        .opacity(isVisible ? 1 : 0)
+        .scaleEffect(isVisible ? 1 : 0.95)
+        .onAppear {
+            withAnimation(DesignSystem.Animations.snappyEaseOut) {
+                isVisible = true
+            }
+        }
     }
 
     // MARK: - General Section
     private var sectionGeneral: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Allgemeine Einstellungen")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundColor(.white)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(DesignSystem.textPrimary)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 settingRow(
+                    icon: "clock.arrow.circlepath",
                     title: "Abfrageintervall",
                     desc: "Hintergrundabfrage der Kontingente"
                 ) {
@@ -149,32 +191,38 @@ public struct SettingsView: View {
                         Text("30 Min.").tag(30)
                     }
                     .pickerStyle(MenuPickerStyle())
-                    .frame(width: 130)
+                    .frame(width: 140)
                 }
 
                 settingRow(
+                    icon: "bolt.horizontal.fill",
                     title: "Bei macOS-Login starten",
                     desc: "CursorCompanion automatisch im Hintergrund öffnen"
                 ) {
                     Toggle("", isOn: Binding(
                         get: { appState.settings.launchAtLogin },
                         set: { val in
-                            appState.settings.launchAtLogin = val
-                            LaunchAtLoginHelper.setEnabled(val)
+                            withAnimation(DesignSystem.Animations.fastSpring) {
+                                appState.settings.launchAtLogin = val
+                                LaunchAtLoginHelper.setEnabled(val)
+                            }
                         }
                     ))
                     .toggleStyle(SwitchToggleStyle())
                 }
 
                 settingRow(
+                    icon: "bell.badge.fill",
                     title: "Warnung bei hohem Verbrauch",
                     desc: "macOS-Benachrichtigung bei ≥ 85% Verbrauch"
                 ) {
                     Toggle("", isOn: Binding(
                         get: { appState.settings.notifyHighUsage },
                         set: { val in
-                            appState.settings.notifyHighUsage = val
-                            if val { permissions.requestNotificationPermission() }
+                            withAnimation(DesignSystem.Animations.fastSpring) {
+                                appState.settings.notifyHighUsage = val
+                                if val { permissions.requestNotificationPermission() }
+                            }
                         }
                     ))
                     .toggleStyle(SwitchToggleStyle())
@@ -185,121 +233,164 @@ public struct SettingsView: View {
 
     // MARK: - Accounts Section
     private var sectionAccounts: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Verwaltete Accounts")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(DesignSystem.textPrimary)
                 Spacer()
                 Button(action: {
                     Task { await appState.syncActiveCursorAccount() }
                 }) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         Image(systemName: "arrow.clockwise")
                         Text("Jetzt scannen")
                     }
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(DesignSystem.textPrimary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(DesignSystem.bgTertiary)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+                    .cornerRadius(6)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.springy)
             }
 
             if appState.accounts.isEmpty {
                 Text("Keine Accounts gecacht. Bitte öffne die Cursor-App und melde dich an.")
-                    .font(.system(size: 11.5))
-                    .foregroundColor(Color(white: 0.5))
-                    .padding(.vertical, 8)
+                    .font(.system(size: 12))
+                    .foregroundColor(DesignSystem.textSecondary)
+                    .padding(.vertical, 12)
             } else {
                 ForEach(appState.accounts) { account in
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 6) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 8) {
                                     Text(account.label)
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.white)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(DesignSystem.textPrimary)
 
                                     if account.isActive {
                                         Text("AKTIV")
                                             .font(.system(size: 9, weight: .bold))
-                                            .padding(.horizontal, 5)
-                                            .padding(.vertical, 1)
-                                            .background(Color(red: 0.06, green: 0.73, blue: 0.51).opacity(0.2))
-                                            .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
-                                            .cornerRadius(3)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(DesignSystem.accentSuccess.opacity(0.15))
+                                            .foregroundColor(DesignSystem.accentSuccess)
+                                            .cornerRadius(4)
                                     } else {
                                         Text("CACHED")
                                             .font(.system(size: 9, weight: .bold))
-                                            .padding(.horizontal, 5)
-                                            .padding(.vertical, 1)
-                                            .background(Color(white: 0.15))
-                                            .foregroundColor(Color(white: 0.6))
-                                            .cornerRadius(3)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(DesignSystem.bgTertiary)
+                                            .foregroundColor(DesignSystem.textSecondary)
+                                            .cornerRadius(4)
                                     }
 
                                     if let plan = account.plan {
                                         Text(plan.uppercased())
                                             .font(.system(size: 9, weight: .bold))
-                                            .padding(.horizontal, 5)
-                                            .padding(.vertical, 1)
-                                            .background(Color(white: 0.12))
-                                            .foregroundColor(Color(red: 0.96, green: 0.62, blue: 0.04))
-                                            .cornerRadius(3)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(DesignSystem.accentWarning.opacity(0.15))
+                                            .foregroundColor(DesignSystem.accentWarning)
+                                            .cornerRadius(4)
                                     }
                                 }
 
                                 Text(account.id)
                                     .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(Color(white: 0.4))
+                                    .foregroundColor(DesignSystem.textMuted)
                             }
 
                             Spacer()
 
-                            Button("Umbenennen") {
-                                renamingAccountID = account.id
-                                renamingText = account.label
+                            Button(action: {
+                                withAnimation(DesignSystem.Animations.physicalSpring) {
+                                    if renamingAccountID == account.id {
+                                        renamingAccountID = nil
+                                    } else {
+                                        renamingAccountID = account.id
+                                        renamingText = account.label
+                                    }
+                                }
+                            }) {
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(DesignSystem.textPrimary)
+                                    .frame(width: 24, height: 24)
+                                    .background(DesignSystem.bgTertiary)
+                                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+                                    .cornerRadius(6)
                             }
-                            .buttonStyle(PlainButtonStyle())
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(white: 0.8))
+                            .buttonStyle(.springy)
+                            .help("Umbenennen")
 
                             if !account.isActive {
-                                Button("Entfernen") {
+                                Button(action: {
                                     Task { await appState.removeAccount(accountID: account.id) }
+                                }) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(DesignSystem.accentError)
+                                        .frame(width: 24, height: 24)
+                                        .background(DesignSystem.bgTertiary)
+                                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+                                        .cornerRadius(6)
                                 }
-                                .buttonStyle(PlainButtonStyle())
-                                .font(.system(size: 11))
-                                .foregroundColor(Color(red: 0.96, green: 0.25, blue: 0.37))
+                                .buttonStyle(.springy)
+                                .help("Entfernen")
                             }
                         }
 
                         if renamingAccountID == account.id {
-                            HStack {
+                            HStack(spacing: 8) {
                                 TextField("Neues Label", text: $renamingText)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .frame(maxWidth: .infinity)
                                 
-                                Button("Speichern") {
+                                Button(action: {
                                     Task {
                                         await appState.updateAccountLabel(accountID: account.id, newLabel: renamingText)
+                                        withAnimation(DesignSystem.Animations.physicalSpring) {
+                                            renamingAccountID = nil
+                                        }
+                                    }
+                                }) {
+                                    Text("Speichern")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(DesignSystem.textPrimary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(DesignSystem.bgTertiary)
+                                        .cornerRadius(6)
+                                }
+                                .buttonStyle(.springy)
+
+                                Button(action: {
+                                    withAnimation(DesignSystem.Animations.physicalSpring) {
                                         renamingAccountID = nil
                                     }
+                                }) {
+                                    Text("Abbrechen")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(DesignSystem.textSecondary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
                                 }
-                                .buttonStyle(PlainButtonStyle())
-                                .font(.system(size: 11, weight: .semibold))
-
-                                Button("Abbrechen") {
-                                    renamingAccountID = nil
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .font(.system(size: 11))
-                                .foregroundColor(Color(white: 0.6))
+                                .buttonStyle(.springy)
                             }
-                            .padding(.top, 4)
+                            .padding(.top, 8)
+                            .transition(AnyTransition.opacity.combined(with: AnyTransition.move(edge: .top)))
                         }
                     }
-                    .padding(10)
-                    .background(Color(white: 0.11))
-                    .cornerRadius(8)
+                    .padding(14)
+                    .background(DesignSystem.bgSecondary)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+                    .cornerRadius(10)
                 }
             }
         }
@@ -307,21 +398,23 @@ public struct SettingsView: View {
 
     // MARK: - Permissions Section
     private var sectionPermissions: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("System-Berechtigungen & Status")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundColor(.white)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(DesignSystem.textPrimary)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 permissionRow(
+                    icon: "doc.text.magnifyingglass",
                     title: "Cursor Datenbank (state.vscdb)",
                     desc: "Lesender Zugriff auf lokale Cursor-Session",
                     status: permissions.sqliteStatus
                 )
 
                 permissionRow(
+                    icon: "key.fill",
                     title: "Schlüsselbund-Zugriff (Keychain)",
-                    desc: "Sichere Speicherung für Multi-Account-Sessions (nur 1x nötig)",
+                    desc: "Sichere Speicherung für Multi-Account-Sessions",
                     status: permissions.keychainStatus,
                     actionTitle: "Einmalig erlauben"
                 ) {
@@ -329,6 +422,7 @@ public struct SettingsView: View {
                 }
 
                 permissionRow(
+                    icon: "app.badge.fill",
                     title: "macOS Benachrichtigungen",
                     desc: "Warnmeldungen bei hoher Kontingent-Auslastung",
                     status: permissions.notificationStatus,
@@ -338,43 +432,61 @@ public struct SettingsView: View {
                 }
             }
 
-            Button("Status aktualisieren") {
+            Button(action: {
                 permissions.refreshAll()
+            }) {
+                Text("Status aktualisieren")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(DesignSystem.accentInfo)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(DesignSystem.bgTertiary)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+                    .cornerRadius(6)
             }
-            .buttonStyle(PlainButtonStyle())
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
-            .padding(.top, 4)
+            .buttonStyle(.springy)
+            .padding(.top, 8)
         }
     }
 
-    private func settingRow<Content: View>(title: String, desc: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack {
+    private func settingRow<Content: View>(icon: String, title: String, desc: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundColor(DesignSystem.textSecondary)
+                .frame(width: 24)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(DesignSystem.textPrimary)
                 Text(desc)
-                    .font(.system(size: 10.5))
-                    .foregroundColor(Color(white: 0.5))
+                    .font(.system(size: 11))
+                    .foregroundColor(DesignSystem.textSecondary)
             }
             Spacer()
             content()
         }
-        .padding(10)
-        .background(Color(white: 0.11))
-        .cornerRadius(8)
+        .padding(14)
+        .background(DesignSystem.bgSecondary)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+        .cornerRadius(10)
     }
 
-    private func permissionRow(title: String, desc: String, status: PermissionStatus, actionTitle: String? = nil, action: (() -> Void)? = nil) -> some View {
-        HStack {
+    private func permissionRow(icon: String, title: String, desc: String, status: PermissionStatus, actionTitle: String? = nil, action: (() -> Void)? = nil) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundColor(DesignSystem.textSecondary)
+                .frame(width: 24)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(DesignSystem.textPrimary)
                 Text(desc)
-                    .font(.system(size: 10.5))
-                    .foregroundColor(Color(white: 0.5))
+                    .font(.system(size: 11))
+                    .foregroundColor(DesignSystem.textSecondary)
             }
             Spacer()
 
@@ -384,36 +496,38 @@ public struct SettingsView: View {
                     Image(systemName: "checkmark.circle.fill")
                     Text("Erlaubt")
                 }
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(Color(red: 0.06, green: 0.73, blue: 0.51))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(DesignSystem.accentSuccess)
 
             case .denied, .notDetermined:
                 if let action = action, let title = actionTitle {
                     Button(action: action) {
                         Text(title)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundColor(.black)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color(red: 0.06, green: 0.73, blue: 0.51))
-                            .cornerRadius(5)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 5)
+                            .background(DesignSystem.accentSuccess)
+                            .shadow(color: DesignSystem.accentSuccess.opacity(0.4), radius: 4)
+                            .cornerRadius(6)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(.springy)
                 } else {
                     Text("Bereit")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
 
             case .notFound(let reason):
                 Text("Nicht gefunden")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(red: 0.96, green: 0.62, blue: 0.04))
+                    .font(.system(size: 12))
+                    .foregroundColor(DesignSystem.accentWarning)
                     .help(reason)
             }
         }
-        .padding(10)
-        .background(Color(white: 0.11))
-        .cornerRadius(8)
+        .padding(14)
+        .background(DesignSystem.bgSecondary)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DesignSystem.borderHighlight, lineWidth: 0.5))
+        .cornerRadius(10)
     }
 }
