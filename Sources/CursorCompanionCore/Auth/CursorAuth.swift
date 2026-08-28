@@ -41,9 +41,36 @@ public enum CursorAuth: Sendable {
     /// Prüft, ob ein Token erneuert werden muss (Standard: 300 Sekunden Puffer vor Ablauf)
     public static func needsRefresh(_ token: String, bufferSeconds: TimeInterval = 300, now: Date = Date()) -> Bool {
         guard let exp = expirationDate(fromAccessToken: token) else {
-            // Kein lesbares Ablaufdatum -> defensiv als erneuerungsbedürftig werten
             return true
         }
         return exp.timeIntervalSince(now) < bufferSeconds
+    }
+
+    /// Löst die Priorisierung zwischen SQLite-Daten und Keychain-Daten auf
+    public static func resolveSession(sqlite: RawAuthData?, keychain: RawAuthData?) -> RawAuthData? {
+        guard let sqlite = sqlite else {
+            return keychain
+        }
+        guard let keychain = keychain else {
+            return sqlite
+        }
+
+        // Sonderfall: SQLite hat "free", aber Keychain hat anderen User -> Keychain bevorzugen
+        if sqlite.membershipType == "free" {
+            let sqlUser = userID(fromAccessToken: sqlite.accessToken)
+            let kcUser = userID(fromAccessToken: keychain.accessToken)
+            if sqlUser != kcUser {
+                return keychain
+            }
+        }
+
+        return sqlite
+    }
+
+    /// Erkennt die aktuell aktive Session auf dem Mac
+    public static func detectActiveSession() -> RawAuthData? {
+        let sqlite = SQLiteReader.readCursorAuth()
+        let keychain = KeychainReader.readCursorTokens()
+        return resolveSession(sqlite: sqlite, keychain: keychain)
     }
 }
