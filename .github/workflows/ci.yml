@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Skills & Configurations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate stitch-react-components
+        run: |
+          cd .agents/skills/stitch-react-components
+          npm ci || npm install
+          npm run validate
+
+      - name: Validate stitch-react-native
+        run: |
+          cd .agents/skills/stitch-react-native
+          npm ci || npm install
+          npm run validate
+
+      - name: Verify JSON Integrity
+        run: |
+          node -e '
+            const fs = require("fs");
+            const files = ["skills-lock.json"];
+            files.forEach(f => {
+              if (fs.existsSync(f)) {
+                JSON.parse(fs.readFileSync(f, "utf8"));
+                console.log(`✓ Validated ${f}`);
+              }
+            });
+          '
