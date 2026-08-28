@@ -1,0 +1,7 @@
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.NEW_ACCESS_TOKEN_PAYLOAD.SIGNATURE_NOT_VERIFIED",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "REFRESH_TOKEN_MAY_OR_MAY_NOT_ROTATE",
+  "scope": "openid profile email offline_access"
+}

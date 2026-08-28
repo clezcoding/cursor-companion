@@ -1,0 +1,86 @@
+import Foundation
+
+/// Haupt-Authentifizierungslogik für Cursor-Sessions
+public enum CursorAuth: Sendable {
+    /// Extrahiert die User-ID aus dem `sub`-Claim eines JWT
+    public static func userID(fromAccessToken token: String) -> String? {
+        guard let claims = JWTHelper.decodeClaims(from: token),
+              let sub = claims["sub"] as? String else {
+            return nil
+        }
+        return parseUserID(fromSub: sub)
+    }
+
+    /// Hilfsfunktion: Teilt `sub` an `|` auf; falls vorhanden, wird parts[1] gewählt, sonst parts[0]
+    public static func parseUserID(fromSub sub: String) -> String {
+        let parts = sub.components(separatedBy: "|")
+        if parts.count > 1 {
+            return parts[1]
+        }
+        return sub
+    }
+
+    /// Berechnet das Ablaufdatum aus dem `exp`-Claim eines JWT
+    public static func expirationDate(fromAccessToken token: String) -> Date? {
+        guard let claims = JWTHelper.decodeClaims(from: token) else { return nil }
+        if let expNumber = claims["exp"] as? NSNumber {
+            return Date(timeIntervalSince1970: expNumber.doubleValue)
+        } else if let expDouble = claims["exp"] as? Double {
+            return Date(timeIntervalSince1970: expDouble)
+        }
+        return nil
+    }
+
+    /// Erzeugt den Wert für den `WorkosCursorSessionToken`-Cookie
+    /// Format: `<userID>%3A%3A<accessToken>` (entspricht URL-encodiert `userID::accessToken`)
+    public static func sessionCookieValue(fromAccessToken token: String) -> String? {
+        guard let uid = userID(fromAccessToken: token) else { return nil }
+        return "\(uid)%3A%3A\(token)"
+    }
+
+    /// Prüft, ob ein Token erneuert werden muss (Standard: 300 Sekunden Puffer vor Ablauf)
+    public static func needsRefresh(_ token: String, bufferSeconds: TimeInterval = 300, now: Date = Date()) -> Bool {
+        guard let exp = expirationDate(fromAccessToken: token) else {
+            return true
+        }
+        return exp.timeIntervalSince(now) < bufferSeconds
+    }
+
+    /// Löst die Priorisierung zwischen SQLite-Daten und Keychain-Daten auf
+    public static func resolveSession(sqlite: RawAuthData?, keychain: RawAuthData?) -> RawAuthData? {
+        guard let sqlite = sqlite else {
+            return keychain
+        }
+        guard let keychain = keychain else {
+            return sqlite
+        }
+
+        // Sonderfall: SQLite hat "free", aber Keychain hat anderen User -> Keychain bevorzugen
+        if sqlite.membershipType == "free" {
+            let sqlUser = userID(fromAccessToken: sqlite.accessToken)
+            let kcUser = userID(fromAccessToken: keychain.accessToken)
+            if sqlUser != kcUser {
+                return keychain
+            }
+        }
+
+        return sqlite
+    }
+
+    /// Erkennt die aktuell aktive Session auf dem Mac (liest primär SQLite ohne Keychain-Dialog)
+    public static func detectActiveSession() -> RawAuthData? {
+        let sqlite = SQLiteReader.readCursorAuth()
+        if let sqlite = sqlite, sqlite.membershipType != "free" {
+            return sqlite
+        }
+        // Nur wenn SQLite fehlt oder "free" ist, als Fallback Keychain abfragen,
+        // sofern der Nutzer dem Keychain-Zugriff explizit zugestimmt hat.
+        let keychain: RawAuthData?
+        if UserDefaults.standard.bool(forKey: "dev.cursorcompanion.keychain_authorized") {
+            keychain = KeychainReader.readCursorTokens()
+        } else {
+            keychain = nil
+        }
+        return resolveSession(sqlite: sqlite, keychain: keychain)
+    }
+}

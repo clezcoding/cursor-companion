@@ -1,0 +1,19 @@
+{
+  "membershipType": "enterprise",
+  "limitType": "team",
+  "billingCycleStart": "2026-08-01T00:00:00.000Z",
+  "billingCycleEnd": "2026-09-01T00:00:00.000Z",
+  "teamUsage": {
+    "pooled": {
+      "cents": 128000,
+      "limitCents": 400000
+    },
+    "onDemand": {
+      "cents": 0,
+      "limitCents": 0
+    }
+  },
+  "individualUsage": {
+    "plan": {}
+  }
+}
