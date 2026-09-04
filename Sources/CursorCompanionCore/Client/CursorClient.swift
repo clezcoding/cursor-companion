@@ -77,6 +77,34 @@ public final class CursorClient: Sendable {
         return try CursorUsageMapper.mapSummary(json)
     }
 
+    /// Ruft GET https://cursor.com/api/usage?user=<id> ab
+    public func fetchRequestUsage(tokens: AuthTokens, userID: String) async throws -> [String: Any] {
+        guard let cookieVal = CursorAuth.sessionCookieValue(fromAccessToken: tokens.accessToken) else {
+            throw ClientError.unauthenticated
+        }
+
+        var request = URLRequest(url: CursorEndpoints.requestUsageURL(userID: userID))
+        request.httpMethod = "GET"
+        request.setValue("WorkosCursorSessionToken=\(cookieVal)", forHTTPHeaderField: "Cookie")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw ClientError.networkError("Ungültige Antwort")
+        }
+
+        if http.statusCode == 401 || http.statusCode == 403 {
+            throw ClientError.unauthenticated
+        }
+
+        guard (200...299).contains(http.statusCode),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ClientError.decodingError
+        }
+
+        return json
+    }
+
     /// Ruft PlanInfo über Connect-RPC ab (optional für Plandetails)
     public func fetchPlanInfo(tokens: AuthTokens) async throws -> String? {
         var request = URLRequest(url: CursorEndpoints.planInfoURL)
@@ -116,7 +144,14 @@ public final class CursorClient: Sendable {
         while attempt < 2 {
             attempt += 1
             do {
-                let snapshot = try await fetchUsageSummary(tokens: tokens)
+                var snapshot = try await fetchUsageSummary(tokens: tokens)
+                if let requestJson = try? await fetchRequestUsage(tokens: tokens, userID: account.id),
+                   let parsed = try? CursorUsageMapper.mapRequestUsage(requestJson) {
+                    snapshot.requestsUsed = parsed.used
+                    snapshot.requestsLimit = parsed.limit
+                    snapshot.modelBreakdown = parsed.breakdown
+                }
+                
                 let plan = try? await fetchPlanInfo(tokens: tokens)
 
                 var updated = account
