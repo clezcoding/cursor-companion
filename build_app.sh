@@ -15,6 +15,7 @@ rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$CONTENTS_DIR/PlugIns" "$CONTENTS_DIR/Frameworks"
 
 cp .build/release/CursorCompanion "$MACOS_DIR/CursorCompanion"
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$MACOS_DIR/CursorCompanion"
 
 # Sparkle Framework kopieren (dynamisch verlinkt)
 echo "==> Copying Sparkle.framework..."
